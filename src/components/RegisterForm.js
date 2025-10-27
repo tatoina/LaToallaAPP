@@ -6,7 +6,6 @@ import { auth, db } from "../firebase";
 export default function RegisterForm({ onRegistered = () => {}, onCancel = () => {} }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,10 +28,6 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
       setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
-    if (!username.trim()) {
-      setError("Introduce un nombre de usuario.");
-      return;
-    }
 
     setLoading(true);
 
@@ -40,10 +35,11 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
+      // Guardamos nombre/apellido y email; eliminamos el campo 'username'
       await setDoc(doc(db, "users", uid), {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        username: username.trim(),
+        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
         email: email.trim(),
         createdAt: serverTimestamp()
       });
@@ -59,7 +55,6 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
       onRegistered();
       setFirstName("");
       setLastName("");
-      setUsername("");
       setEmail("");
       setPassword("");
     } catch (err) {
@@ -87,13 +82,6 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
         required
       />
       <input
-        type="text"
-        placeholder="Usuario (username)"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
-      />
-      <input
         type="email"
         placeholder="Email"
         value={email}
@@ -113,7 +101,6 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
         <button className="btn" type="submit" disabled={loading}>
           {loading ? "Registrando..." : "Crear cuenta"}
         </button>
-        {/* Botón Volver: vuelve a la pantalla de login */}
         <button
           type="button"
           className="btn outline"

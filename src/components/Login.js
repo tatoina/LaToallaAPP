@@ -2,14 +2,19 @@ import React, { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import RegisterForm from "./RegisterForm";
+import ResetPassword from "./ResetPassword";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -18,7 +23,8 @@ export default function Login() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      setInfo("Login correcto. Bienvenido.");
+      setInfo("Login correcto. Redirigiendo...");
+      navigate("/");
     } catch (err) {
       setError(err.message || "Error al iniciar sesión");
     } finally {
@@ -28,27 +34,35 @@ export default function Login() {
 
   const handleShowRegister = () => {
     setShowRegisterForm(true);
+    setShowResetForm(false);
     setError("");
     setInfo("");
   };
 
   const handleBackToLogin = () => {
     setShowRegisterForm(false);
+    setShowResetForm(false);
     setError("");
     setInfo("");
     setEmail("");
     setPassword("");
   };
 
+  const handleShowReset = () => {
+    setShowResetForm(true);
+    setShowRegisterForm(false);
+    setError("");
+    setInfo("");
+  };
+
   return (
     <div className="login-wrapper">
       <main className="card">
-        {/* Imagen dentro del cajón (pon public/loco.png) */}
         <div className="card-top">
-          <img src="/logo100.png" alt="loco" className="card-logo" />
+          <img src="/loco.png" alt="loco" className="card-logo" />
         </div>
 
-        {!showRegisterForm ? (
+        {!showRegisterForm && !showResetForm ? (
           <>
             <h2>Iniciar sesión</h2>
             <form onSubmit={handleLogin} className="form">
@@ -80,12 +94,22 @@ export default function Login() {
                   Registrarse
                 </button>
               </div>
+
+              <div style={{ marginTop: 10, textAlign: "center" }}>
+                <button
+                  type="button"
+                  className="btn outline small"
+                  onClick={handleShowReset}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
             </form>
 
             {error && <p className="error">{error}</p>}
             {info && <p className="info">{info}</p>}
           </>
-        ) : (
+        ) : showRegisterForm ? (
           <>
             <h2>Registro</h2>
             <RegisterForm
@@ -94,6 +118,11 @@ export default function Login() {
               }}
               onCancel={handleBackToLogin}
             />
+          </>
+        ) : (
+          <>
+            <h2>Restablecer contraseña</h2>
+            <ResetPassword onBack={handleBackToLogin} />
           </>
         )}
       </main>

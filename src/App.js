@@ -1,10 +1,61 @@
 import React from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Login from "./components/Login";
+import RegisterForm from "./components/RegisterForm";
+import Dashboard from "./pages/Dashboard";
+import FiestasDeSantiago from "./pages/FiestasDeSantiago";
+import Ferias from "./pages/Ferias";
+import GestionStock from "./pages/GestionStock";
+import { useAuth } from "./contexts/AuthContext";
+
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <div className="centered">Cargando...</div>;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  return children;
+}
 
 export default function App() {
   return (
-    <div className="app-container">
-      <Login />
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<RegisterForm onRegistered={() => {}} onCancel={() => {}} />} />
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/fiestas"
+        element={
+          <RequireAuth>
+            <FiestasDeSantiago />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/ferias"
+        element={
+          <RequireAuth>
+            <Ferias />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/gestion-stock"
+        element={
+          <RequireAuth>
+            <GestionStock />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
