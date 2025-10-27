@@ -4,6 +4,7 @@ import { auth } from "../firebase";
 import RegisterForm from "./RegisterForm";
 import ResetPassword from "./ResetPassword";
 import { useNavigate } from "react-router-dom";
+import loco from "../assets/loco.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -59,7 +60,7 @@ export default function Login() {
     <div className="login-wrapper">
       <main className="card">
         <div className="card-top">
-          <img src="/loco.png" alt="loco" className="card-logo" />
+          <img src={loco} alt="loco" className="card-logo" />
         </div>
 
         {!showRegisterForm && !showResetForm ? (
