@@ -1,0 +1,112 @@
+/* https://github.com/tatoina/LaToallaAPP - Tema inspirado en la foto */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+:root{
+  --bg: #D8E79B;
+  --card-bg: #F7FAF0;
+  --primary: #6A8F3A;
+  --accent: #D97A3B;
+  --stone: #9C6E43;
+  --sky: #7FBAD9;
+  --text: #243123;
+  --muted: #8BA68A;
+
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --shadow-soft: 0 8px 24px rgba(36,49,35,0.10);
+  --shadow-tight: 0 4px 12px rgba(36,49,35,0.08);
+}
+
+/* Global */
+html,body,#root{
+  height:100%;
+}
+body{
+  margin:0;
+  font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(216,231,155,0.85) 100%); /* sutil gradiente */
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.45;
+}
+
+/* Card base (login / forms) */
+.card{
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+  max-width: 520px;
+  margin: 8vh auto;
+  border: 1px solid rgba(36,49,35,0.04);
+}
+
+/* Card top / logo */
+.card-top{
+  display:flex;
+  justify-content:center;
+  margin-bottom: 6px;
+}
+.card-logo{
+  width:92px;
+  height:auto;
+  border-radius:10px;
+  box-shadow: var(--shadow-tight);
+  object-fit:cover;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.2));
+}
+
+/* Forms */
+.form input, .form textarea {
+  width:100%;
+  padding:12px 14px;
+  border-radius:8px;
+  border:1px solid rgba(36,49,35,0.08);
+  background: white;
+  margin-bottom:10px;
+  font-size:15px;
+  box-sizing:border-box;
+}
+
+/* Buttons */
+.btn{
+  background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 85%, black 15%));
+  color: white;
+  border: none;
+  padding:12px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight:600;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  box-shadow: 0 6px 18px rgba(106,143,58,0.18);
+}
+.btn:hover{ transform:translateY(-2px); }
+.btn:active{ transform:translateY(0); }
+
+.btn.outline{
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid rgba(36,49,35,0.08);
+  box-shadow:none;
+}
+
+/* Size helpers */
+.btn.large{ padding:14px 18px; font-size:17px; border-radius:12px; display:block; width:100%; }
+.btn.small{ padding:8px 10px; font-size:13px; border-radius:8px; }
+
+/* Dashboard buttons container (apilados) */
+.dashboard { padding: 18px; box-sizing: border-box; margin: 8vh auto 0; max-width: 520px; }
+.dashboard-buttons { display:flex; flex-direction:column; gap:14px; margin-top:16px; }
+.dashboard .btn.large.outline{ background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6)); color:var(--stone); border: 1px solid rgba(36,49,35,0.06); box-shadow: var(--shadow-tight); }
+
+/* Small utility classes */
+.centered { display:flex; align-items:center; justify-content:center; height: 60vh; }
+.error { color: #b00020; margin-top:8px; font-size:14px; }
+.info { color: var(--stone); margin-top:8px; font-size:14px; }
+
+/* Responsive tweaks */
+@media (min-width: 900px){
+  .card { margin-top: 6vh; }
+  .card-logo{ width:110px; }
+}

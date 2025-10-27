@@ -198,3 +198,210 @@ h2 {
 .btn.small { padding: 8px 12px; font-size: 14px; }
 .page { max-width: 720px; margin: 20px auto; padding: 18px; }
 .centered { display:flex; align-items:center; justify-content:center; height: 60vh; }
+/* Tema sencillo inspirado en la imagen (puente / verdes / piedra) */
+
+/* Paleta inspirada en la foto */
+:root {
+  --bg: #D8E79B;       /* verde claro de fondo (inspirado) */
+  --card: #F7FAF0;     /* tarjeta cálida */
+  --accent: #6A8F3A;   /* verde oliva (botones principales) */
+  --text: #243123;     /* texto oscuro tirando a verde profundo */
+  --stone: #9C6E43;    /* tono piedra */
+  --sky: #7FBAD9;      /* azul-agua para toques */
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Layout general */
+.app-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Topbar (oculto en móvil por defecto) */
+.topbar {
+  display: none; /* dejar oculto en móvil; si quieres mostrar en desktop, cambia a block y añade styles */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, #fff, #f8fafc);
+  border-bottom: 1px solid rgba(36,49,35,0.04);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+}
+
+/* Logo */
+.logo {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--stone);
+}
+
+/* Card principal (responsive, mobile-first) */
+.card {
+  width: 92vw;
+  max-width: 420px;
+  background: linear-gradient(180deg, var(--card), rgba(255,255,255,0.95));
+  padding: 18px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(16,24,40,0.06);
+  margin: 12vh auto 0; /* centrado vertical aproximado en móvil */
+  box-sizing: border-box;
+  border: 1px solid rgba(36,49,35,0.04);
+}
+
+/* Encabezado de la card con logo */
+.card-top {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.card-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 12px;
+  display: block;
+  box-shadow: 0 6px 18px rgba(36,49,35,0.06);
+}
+
+/* Formularios */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form input,
+.form textarea {
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(36,49,35,0.07);
+  background: white;
+  font-size: 16px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+/* Botones */
+.btn {
+  display: inline-block;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  color: white;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 85%, black 10%));
+  box-shadow: 0 8px 20px rgba(106,143,58,0.16);
+  transition: transform .12s ease, opacity .12s ease;
+  text-align: center;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+
+.btn.outline {
+  background: transparent;
+  color: var(--stone);
+  border: 1.5px solid rgba(36,49,35,0.08);
+  box-shadow: none;
+}
+
+/* Variantes de tamaño */
+.btn.large { width: 100%; padding: 14px 16px; font-size: 18px; border-radius: 10px; }
+.btn.small { padding: 8px 12px; font-size: 14px; }
+
+/* Acciones (botones) - columna en móvil */
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-direction: column;
+}
+
+/* Mensajes */
+.error {
+  color: #b91c1c;
+  margin-top: 12px;
+  text-align: center;
+}
+.info {
+  color: var(--stone);
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* Tipografía y títulos */
+h2 {
+  margin: 6px 0 12px;
+  font-size: 20px;
+  text-align: center;
+  color: var(--text);
+}
+
+/* Dashboard / páginas */
+.dashboard {
+  padding: 18px;
+  box-sizing: border-box;
+  margin: 12vh auto 0;
+  max-width: 520px;
+}
+.dashboard-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* Página base */
+.page {
+  max-width: 720px;
+  margin: 20px auto;
+  padding: 18px;
+}
+
+/* Centrado util */
+.centered {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height: 60vh;
+}
+
+/* Responsive: desktop tweaks */
+@media (min-width: 520px) {
+  .card {
+    margin-top: 80px;
+    padding: 20px;
+  }
+  .actions {
+    flex-direction: row;
+  }
+  .topbar {
+    display: flex; /* mostramos topbar en pantallas >= 520px */
+  }
+}
+
+/* Pequeños ajustes visuales extras */
+.logo-img {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+.login-wrapper .topbar {
+  gap: 12px;
+}

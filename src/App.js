@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import RegisterForm from "./components/RegisterForm";
 import Dashboard from "./pages/Dashboard";
 import FiestasDeSantiago from "./pages/FiestasDeSantiago";
+import FiestasList from "./pages/FiestasList";
 import Ferias from "./pages/Ferias";
 import GestionStock from "./pages/GestionStock";
 import { useAuth } from "./contexts/AuthContext";
@@ -36,6 +37,14 @@ export default function App() {
         element={
           <RequireAuth>
             <FiestasDeSantiago />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/fiestas/list"
+        element={
+          <RequireAuth>
+            <FiestasList />
           </RequireAuth>
         }
       />

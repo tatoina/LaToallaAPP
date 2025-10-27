@@ -10,13 +10,13 @@ export default function Dashboard() {
     <div className="dashboard card">
       <h2 style={{ textAlign: "center" }}>Bienvenido</h2>
 
-      <div className="dashboard-buttons">
+      <div className="dashboard-buttons" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <button className="btn large" onClick={() => navigate("/fiestas")}>
-          FIESTAS DE SANTIAGO
+          FORMULARIO DE INSCRIPCION
         </button>
 
-        <button className="btn large outline" onClick={() => navigate("/ferias")}>
-          FERIAS
+        <button className="btn large" onClick={() => navigate("/fiestas/list")}>
+          LISTADO DE INSCRIPCIONES
         </button>
 
         <button className="btn large" onClick={() => navigate("/gestion-stock")}>
@@ -24,7 +24,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div style={{ marginTop: 12, textAlign: "center" }}>
+      <div style={{ marginTop: 16, textAlign: "center" }}>
         <button
           className="btn outline small"
           onClick={() => {
