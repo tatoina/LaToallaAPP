@@ -375,7 +375,7 @@ export default function FiestasList() {
         {/* Volver al dashboard */}
         <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
           <button className="btn outline small" onClick={() => navigate("/")}>
-            Volver al Dashboard
+            Volver a inicio
           </button>
         </div>
       </div>

@@ -8,7 +8,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard card">
-      <h2 style={{ textAlign: "center" }}>Bienvenido</h2>
+      <h2 style={{ textAlign: "center" }}>Bienvenido a la App de LA TOALLA</h2>
 
       <div className="dashboard-buttons" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <button className="btn large" onClick={() => navigate("/fiestas")}>

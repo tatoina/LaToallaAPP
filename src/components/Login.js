@@ -5,6 +5,7 @@ import RegisterForm from "./RegisterForm";
 import ResetPassword from "./ResetPassword";
 import { useNavigate } from "react-router-dom";
 import loco from "../assets/loco.png";
+import InstallButton from "./InstallButton"; // botón circular junto al logo
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -59,8 +60,12 @@ export default function Login() {
   return (
     <div className="login-wrapper">
       <main className="card">
-        <div className="card-top">
+        {/* Logo + botón de instalación en la esquina superior derecha */}
+        <div className="card-top" style={{ position: "relative" }}>
           <img src={loco} alt="loco" className="card-logo" />
+          <div style={{ position: "absolute", top: 8, right: 8 }}>
+            <InstallButton className="install-btn-circle" />
+          </div>
         </div>
 
         {!showRegisterForm && !showResetForm ? (

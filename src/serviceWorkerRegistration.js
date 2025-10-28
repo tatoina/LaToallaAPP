@@ -1,23 +1,23 @@
-// simple registration helper (no-op if SW no soportado)
+// sencillo registro del service worker ubicado en /service-worker.js
 export function register() {
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker
-        .register("/service-worker.js")
-        .then((registration) => {
-          console.log("ServiceWorker registrado:", registration.scope);
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      const swUrl = '/service-worker.js';
+      navigator.serviceWorker.register(swUrl)
+        .then(reg => {
+          console.log('Service worker registered:', reg);
         })
-        .catch((error) => {
-          console.warn("ServiceWorker fallo registro:", error);
+        .catch(err => {
+          console.warn('Service worker registration failed:', err);
         });
     });
   }
 }
 
 export function unregister() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.ready
-      .then((registration) => registration.unregister())
-      .catch((err) => console.warn(err));
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(r => r.unregister());
+    });
   }
 }
