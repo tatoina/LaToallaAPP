@@ -3,10 +3,12 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Login from "./components/Login";
 import RegisterForm from "./components/RegisterForm";
 import Dashboard from "./pages/Dashboard";
+import FiestasJuventud from "./pages/FiestasJuventud";
 import FiestasDeSantiago from "./pages/FiestasDeSantiago";
 import FiestasList from "./pages/FiestasList";
 import Ferias from "./pages/Ferias";
 import GestionStock from "./pages/GestionStock";
+import EventosTemporales from "./pages/EventosTemporales";
 import { useAuth } from "./contexts/AuthContext";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
@@ -34,6 +36,14 @@ export default function App() {
           element={
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/fiestas-juventud"
+          element={
+            <RequireAuth>
+              <FiestasJuventud />
             </RequireAuth>
           }
         />
@@ -66,6 +76,14 @@ export default function App() {
           element={
             <RequireAuth>
               <GestionStock />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/eventos-temporales"
+          element={
+            <RequireAuth>
+              <EventosTemporales />
             </RequireAuth>
           }
         />

@@ -1,131 +1,157 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 function formatDateLabel(iso) {
   try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+    const d = new Date(iso + "T12:00:00");
+    return d.toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" });
   } catch {
     return iso;
   }
 }
+
+const FIXED_TABS = [
+  { key: "juventud", label: "🎉 Fiestas Juventud" },
+  { key: "fiestas",  label: "🎊 Fiestas Santiago" },
+  { key: "ferias",   label: "🎡 Ferias" },
+];
 
 export default function FiestasList() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [signups, setSignups] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [eventos, setEventos] = useState([]);
+  const [loadingSignups, setLoadingSignups] = useState(true);
+  const [loadingEventos, setLoadingEventos] = useState(true);
 
-  // Filter: only two options (exclusive): 'fiestas' or 'ferias'
-  const [filter, setFilter] = useState("fiestas");
+  const [activeTab, setActiveTab] = useState("juventud");
 
-  // Editing state
+  // Meal filter: null = todos, o uno de 'almuerzo'|'comida'|'cena'
+  const [mealFilter, setMealFilter] = useState(null);
+
   const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({
-    adults: 1,
-    children: 0,
-    almuerzo: false,
-    comida: false,
-    cena: false,
-  });
+  const [editData, setEditData] = useState({ adults: 1, children: 0, almuerzo: false, comida: false, cena: false });
   const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "fiestas_signups"), orderBy("date", "asc"));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setSignups(arr);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Error fetching signups:", err);
-        setLoading(false);
-      }
-    );
+    const unsub = onSnapshot(q, (snap) => {
+      setSignups(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoadingSignups(false);
+    }, (err) => { console.error(err); setLoadingSignups(false); });
     return () => unsub();
   }, []);
 
-  // Filter signups by selected event filter.
-  // Support both new `eventType` (string) and legacy `eventTypes` (array)
-  const filteredSignups = useMemo(() => {
+  useEffect(() => {
+    const q = query(collection(db, "eventos"), orderBy("fecha", "asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setEventos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoadingEventos(false);
+    }, (err) => { console.error(err); setLoadingEventos(false); });
+    return () => unsub();
+  }, []);
+
+  const loading = loadingSignups || loadingEventos;
+
+  const allTabs = useMemo(() => [
+    ...FIXED_TABS,
+    ...eventos.map((ev) => ({
+      key: `evento_${ev.id}`,
+      label: `📅 ${ev.nombre}`,
+    })),
+  ], [eventos]);
+
+  const filteredByTab = useMemo(() => {
     return signups.filter((s) => {
-      if (s.eventType) return s.eventType === filter;
-      if (Array.isArray(s.eventTypes)) return s.eventTypes.includes(filter);
+      if (s.eventType) return s.eventType === activeTab;
+      if (Array.isArray(s.eventTypes)) return s.eventTypes.includes(activeTab);
       return false;
     });
-  }, [signups, filter]);
+  }, [signups, activeTab]);
 
-  // Group filtered signups by date (sorted ascending)
+  // Apply meal filter on top
+  const filteredByMeal = useMemo(() => {
+    if (!mealFilter) return filteredByTab;
+    return filteredByTab.filter((s) => !!s[mealFilter]);
+  }, [filteredByTab, mealFilter]);
+
   const grouped = useMemo(() => {
     const map = {};
-    filteredSignups.forEach((s) => {
+    filteredByMeal.forEach((s) => {
       const key = s.date || "sin-fecha";
       if (!map[key]) map[key] = [];
       map[key].push(s);
     });
-    const entries = Object.keys(map)
-      .sort()
-      .map((date) => ({ date, rows: map[date] }));
-    return entries;
-  }, [filteredSignups]);
+    return Object.keys(map).sort().map((date) => ({ date, rows: map[date] }));
+  }, [filteredByMeal]);
 
-  // Compute totals per date (adults, children) for the grouped rows
   const totalsByDate = useMemo(() => {
     const totals = {};
     grouped.forEach(({ date, rows }) => {
-      let adults = 0;
-      let children = 0;
+      const t = {
+        almuerzo: { adults: 0, children: 0 },
+        comida:   { adults: 0, children: 0 },
+        cena:     { adults: 0, children: 0 },
+      };
       rows.forEach((r) => {
-        adults += Number(r.adults || 0);
-        children += Number(r.children || 0);
+        const a = Number(r.adults || 0);
+        const c = Number(r.children || 0);
+        if (r.almuerzo) { t.almuerzo.adults += a; t.almuerzo.children += c; }
+        if (r.comida)   { t.comida.adults   += a; t.comida.children   += c; }
+        if (r.cena)     { t.cena.adults     += a; t.cena.children     += c; }
       });
-      totals[date] = { adults, children };
+      totals[date] = t;
     });
     return totals;
   }, [grouped]);
 
-  const displayName = (s) => {
-    if (s.name) return s.name;
-    if (s.email) return s.email.split("@")[0];
-    return "anónimo";
-  };
+  const grandTotals = useMemo(() => {
+    const t = {
+      almuerzo: { adults: 0, children: 0 },
+      comida:   { adults: 0, children: 0 },
+      cena:     { adults: 0, children: 0 },
+    };
+    filteredByMeal.forEach((r) => {
+      const a = Number(r.adults || 0);
+      const c = Number(r.children || 0);
+      if (r.almuerzo) { t.almuerzo.adults += a; t.almuerzo.children += c; }
+      if (r.comida)   { t.comida.adults   += a; t.comida.children   += c; }
+      if (r.cena)     { t.cena.adults     += a; t.cena.children     += c; }
+    });
+    return t;
+  }, [filteredByMeal]);
 
-  // returns comida label (joined)
+  const displayName = (s) => s.name || (s.email ? s.email.split("@")[0] : "anónimo");
+
   const comidasLabel = (s) => {
     const parts = [];
-    if (s.almuerzo) parts.push("Almuerzo");
-    if (s.comida) parts.push("Comida");
-    if (s.cena) parts.push("Cena");
-    return parts.length ? parts.join(" · ") : "-";
+    if (s.almuerzo) parts.push("Alm.");
+    if (s.comida)   parts.push("Com.");
+    if (s.cena)     parts.push("Cena");
+    return parts.length ? parts.join(" · ") : "—";
   };
 
-  // Edit handlers
   const onEditClick = (row) => {
     setEditingId(row.id);
-    setEditData({
-      adults: Number(row.adults || 0),
-      children: Number(row.children || 0),
-      almuerzo: !!row.almuerzo,
-      comida: !!row.comida,
-      cena: !!row.cena,
-    });
-  };
-
-  const onEditChange = (field, value) => {
-    setEditData((prev) => ({ ...prev, [field]: value }));
+    setEditData({ adults: Number(row.adults || 0), children: Number(row.children || 0), almuerzo: !!row.almuerzo, comida: !!row.comida, cena: !!row.cena });
   };
 
   const onSaveEdit = async (id) => {
     setSavingEdit(true);
     try {
-      const ref = doc(db, "fiestas_signups", id);
-      await updateDoc(ref, {
+      await updateDoc(doc(db, "fiestas_signups", id), {
         adults: Number(editData.adults),
         children: Number(editData.children),
         almuerzo: !!editData.almuerzo,
@@ -134,251 +160,199 @@ export default function FiestasList() {
       });
       setEditingId(null);
     } catch (err) {
-      console.error("Error updating signup:", err);
-      alert("No se pudo guardar la edición. Intenta de nuevo.");
+      console.error(err);
+      alert("No se pudo guardar la edición.");
     } finally {
       setSavingEdit(false);
     }
   };
 
-  const onCancelEdit = () => {
-    setEditingId(null);
+  const onDelete = async (id) => {
+    if (!window.confirm("¿Borrar esta inscripción?")) return;
+    try { await deleteDoc(doc(db, "fiestas_signups", id)); }
+    catch (err) { console.error(err); alert("No se pudo borrar."); }
   };
 
-  const onDelete = async (id) => {
-    const ok = window.confirm("¿Borrar esta inscripción? Esta acción no se puede deshacer.");
-    if (!ok) return;
-    try {
-      await deleteDoc(doc(db, "fiestas_signups", id));
-    } catch (err) {
-      console.error("Error borrando inscripción:", err);
-      alert("No se pudo borrar. Intenta de nuevo.");
-    }
-  };
+  const currentTabLabel = allTabs.find((t) => t.key === activeTab)?.label || activeTab;
 
   return (
-    <div className="page">
-      <div
-        className="card"
-        style={{
-          padding: 16,
-          width: "100%",
-          maxWidth: "none",
-          boxSizing: "border-box",
-        }}
-      >
-        {/* Scoped responsive styles */}
-        <style>{`
-          .fiestas-table-container { width: 100%; box-sizing: border-box; }
-
-          .fiestas-table { width: 100%; border-collapse: collapse; min-width: 0; }
-
-          .fiestas-table th,
-          .fiestas-table td {
-            padding: 10px 12px;
-            font-size: 14px;
-            border-top: 1px solid rgba(0,0,0,0.04);
-            box-sizing: border-box;
-          }
-
-          .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-
-          @media (min-width: 720px) {
-            .fiestas-table col.name { width: 35%; }
-            .fiestas-table col.comida { width: 35%; }
-            .fiestas-table col.adults { width: 15%; min-width: 80px; }
-            .fiestas-table col.children { width: 15%; min-width: 80px; }
-            .fiestas-table col.actions { width: 10%; min-width: 90px; }
-          }
-
-          @media (min-width: 520px) and (max-width: 719px) {
-            .fiestas-table col.name { width: 40%; }
-            .fiestas-table col.comida { width: 40%; }
-            .fiestas-table col.adults { width: 10%; min-width: 60px; }
-            .fiestas-table col.children { width: 10%; min-width: 60px; }
-            .fiestas-table col.actions { width: 12%; min-width: 80px; }
-          }
-
-          @media (max-width: 519px) {
-            .fiestas-table col.name { width: 50%; }
-            .fiestas-table col.comida { width: 30%; }
-            .fiestas-table col.adults { width: 10%; min-width: 36px; }
-            .fiestas-table col.children { width: 10%; min-width: 36px; }
-            .fiestas-table col.actions { width: 0; min-width: 60px; }
-            .fiestas-table th, .fiestas-table td { font-size: 13px; padding: 8px 10px; }
-          }
-
-          .numeric { text-align: right; font-variant-numeric: tabular-nums; }
-          .actions-cell { display:flex; gap:6px; justify-content:flex-end; align-items:center; }
-          .actions-cell .btn { padding:6px 8px; font-size:13px; }
-          .totals-row { display:flex; gap:12px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap; }
-          .totals-box { padding:8px 12px; border-radius:6px; background:rgba(0,0,0,0.03); }
-          .edit-input { width:80px; padding:6px; }
-          .edit-checkbox { margin:0 6px; transform:translateY(1px); }
-        `}</style>
-
-        <h2 style={{ margin: 0 }}>Listado — {filter === "fiestas" ? "Fiestas de Santiago" : "Ferias"}</h2>
-
-        {/* Only two exclusive filter buttons */}
-        <div style={{ display: "flex", gap: 8, marginTop: 12, marginBottom: 12 }}>
-          <button
-            className={`btn ${filter === "fiestas" ? "" : "outline"} small`}
-            onClick={() => setFilter("fiestas")}
-          >
-            Fiestas de Santiago
-          </button>
-
-          <button
-            className={`btn ${filter === "ferias" ? "" : "outline"} small`}
-            onClick={() => setFilter("ferias")}
-          >
-            Ferias
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="centered">Cargando...</div>
-        ) : grouped.length === 0 ? (
-          <p className="info">No hay inscripciones para "{filter === "fiestas" ? "Fiestas de Santiago" : "Ferias"}".</p>
-        ) : (
-          grouped.map(({ date, rows }) => (
-            <section key={date} style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <h3 style={{ margin: 0 }}>{formatDateLabel(date)}</h3>
-                <div style={{ color: "#666", fontSize: 14 }}>Inscripciones: {rows.length}</div>
-              </div>
-
-              {/* Table container */}
-              <div className="fiestas-table-container">
-                <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid rgba(0,0,0,0.04)" }}>
-                  <table className="fiestas-table" role="table">
-                    <colgroup>
-                      <col className="name" />
-                      <col className="comida" />
-                      <col className="adults" />
-                      <col className="children" />
-                      <col className="actions" />
-                    </colgroup>
-
-                    <thead>
-                      <tr style={{ background: "rgba(0,0,0,0.03)" }}>
-                        <th style={{ textAlign: "left", color: "var(--stone, #666)" }}>Usuario</th>
-                        <th style={{ textAlign: "left", color: "var(--stone, #666)" }}>Tipo de comida</th>
-                        <th className="numeric" style={{ color: "var(--stone, #666)" }}>Adultos</th>
-                        <th className="numeric" style={{ color: "var(--stone, #666)" }}>Niños</th>
-                        <th style={{ textAlign: "right", color: "var(--stone, #666)" }}>Acciones</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {rows.map((s) => {
-                        const isOwner = user && s.uid && user.uid === s.uid;
-                        const isEditing = editingId === s.id;
-                        return (
-                          <tr key={s.id}>
-                            <td style={{ fontWeight: 600 }}>
-                              <span className="truncate" title={displayName(s)}>{displayName(s)}</span>
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <input className="edit-checkbox" type="checkbox" checked={!!editData.almuerzo} onChange={(e) => onEditChange("almuerzo", e.target.checked)} />
-                                    <span style={{ fontSize: 13 }}>Alm.</span>
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <input className="edit-checkbox" type="checkbox" checked={!!editData.comida} onChange={(e) => onEditChange("comida", e.target.checked)} />
-                                    <span style={{ fontSize: 13 }}>Com.</span>
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <input className="edit-checkbox" type="checkbox" checked={!!editData.cena} onChange={(e) => onEditChange("cena", e.target.checked)} />
-                                    <span style={{ fontSize: 13 }}>Cena</span>
-                                  </label>
-                                </div>
-                              ) : (
-                                <span className="truncate" title={comidasLabel(s)}>{comidasLabel(s)}</span>
-                              )}
-                            </td>
-
-                            <td className="numeric">
-                              {isEditing ? (
-                                <input
-                                  className="edit-input"
-                                  type="number"
-                                  min="0"
-                                  value={editData.adults}
-                                  onChange={(e) => onEditChange("adults", e.target.value)}
-                                />
-                              ) : (
-                                Number(s.adults || 0)
-                              )}
-                            </td>
-
-                            <td className="numeric">
-                              {isEditing ? (
-                                <input
-                                  className="edit-input"
-                                  type="number"
-                                  min="0"
-                                  value={editData.children}
-                                  onChange={(e) => onEditChange("children", e.target.value)}
-                                />
-                              ) : (
-                                Number(s.children || 0)
-                              )}
-                            </td>
-
-                            <td>
-                              <div className="actions-cell">
-                                {isOwner ? (
-                                  isEditing ? (
-                                    <>
-                                      <button className="btn small" onClick={() => onSaveEdit(s.id)} disabled={savingEdit}>
-                                        {savingEdit ? "Guardando..." : "Guardar"}
-                                      </button>
-                                      <button className="btn outline small" onClick={onCancelEdit}>Cancelar</button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button className="btn small" onClick={() => onEditClick(s)}>Editar</button>
-                                      <button className="btn outline small" onClick={() => onDelete(s.id)}>Borrar</button>
-                                    </>
-                                  )
-                                ) : (
-                                  <span style={{ color: "#999", fontSize: 13 }}>—</span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Totals per date */}
-              <div className="totals-row">
-                <div className="totals-box"><strong>{formatDateLabel(date)}</strong></div>
-                <div className="totals-box" style={{ background: "linear-gradient(180deg, rgba(106,143,58,0.08), rgba(106,143,58,0.04))" }}>
-                  Adultos: <strong>{totalsByDate[date]?.adults ?? 0}</strong>
-                </div>
-                <div className="totals-box" style={{ background: "linear-gradient(180deg, rgba(127,186,217,0.06), rgba(127,186,217,0.03))" }}>
-                  Niños: <strong>{totalsByDate[date]?.children ?? 0}</strong>
-                </div>
-              </div>
-            </section>
-          ))
-        )}
-
-        {/* Volver al dashboard */}
-        <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
-          <button className="btn outline small" onClick={() => navigate("/")}>
-            Volver a inicio
-          </button>
-        </div>
+    <div className="list-page">
+      {/* Cabecera */}
+      <div className="list-topbar">
+        <h2>Inscripciones</h2>
       </div>
+
+      {/* Tabs scrollables */}
+      {!loading && (
+        <div className="list-event-tabs">
+          {allTabs.map(({ key, label }) => (
+            <button
+              key={key}
+              className={`list-tab${activeTab === key ? " active" : ""}`}
+              onClick={() => { setActiveTab(key); setEditingId(null); setMealFilter(null); }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Filtro por tipo de comida */}
+      {!loading && (
+        <div className="meal-filter-bar">
+          <span className="meal-filter-label">Filtrar:</span>
+          {[
+            { key: "almuerzo",  label: "🥐 Almuerzo" },
+            { key: "comida",    label: "🍽️ Comida" },
+            { key: "cena",      label: "🌙 Cena" },
+          ].map(({ key, label }) => (
+            <button
+              key={String(key)}
+              className={`meal-filter-btn${mealFilter === key ? " active" : ""}`}
+              onClick={() => setMealFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="centered">Cargando...</div>
+      ) : (
+        <>
+          {/* Totales globales del evento seleccionado */}
+          {filteredByTab.length > 0 && (() => {
+            const meals = [
+              { key: "almuerzo", label: "🥐 Almuerzo", color: "orange" },
+              { key: "comida",   label: "🍽️ Comida",   color: "orange" },
+              { key: "cena",     label: "🌙 Cena",     color: "purple" },
+            ];
+            const activeMeals = meals.filter((m) => grandTotals[m.key].adults + grandTotals[m.key].children > 0);
+            if (activeMeals.length === 0) return null;
+            return (
+              <div className="list-grand-totals">
+                {activeMeals.map((m) => (
+                  <div key={m.key} className={`list-meal-block ${m.color}`}>
+                    <div className="list-meal-block-title">{m.label}</div>
+                    <div className="list-meal-block-stats">
+                      <div className="list-meal-stat">
+                        <span className="list-meal-stat-label">Adultos</span>
+                        <span className="list-meal-stat-value">{grandTotals[m.key].adults}</span>
+                      </div>
+                      <div className="list-meal-stat">
+                        <span className="list-meal-stat-label">Niños</span>
+                        <span className="list-meal-stat-value">{grandTotals[m.key].children}</span>
+                      </div>
+                      <div className="list-meal-stat total">
+                        <span className="list-meal-stat-label">Total</span>
+                        <span className="list-meal-stat-value">{grandTotals[m.key].adults + grandTotals[m.key].children}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {grouped.length === 0 ? (
+            <div className="list-section-card" style={{ padding: 20, textAlign: "center", color: "#999" }}>
+              No hay inscripciones para {currentTabLabel}
+            </div>
+          ) : (
+            grouped.map(({ date, rows }) => {
+              const t = totalsByDate[date];
+              return (
+                <div key={date} className="list-section-card">
+                  <div className="list-section-header">
+                    <span className="list-section-date">{formatDateLabel(date)}</span>
+                    <div className="list-totals-row">
+                      {[
+                        { key: "almuerzo", label: "🥐 Alm.",  color: "orange" },
+                        { key: "comida",   label: "🍽️ Com.",  color: "orange" },
+                        { key: "cena",     label: "🌙 Cena",  color: "purple" },
+                      ]
+                        .filter((m) => t[m.key].adults + t[m.key].children > 0)
+                        .map((m) => (
+                          <div key={m.key} className={`list-date-meal ${m.color}`}>
+                            <span className="list-date-meal-name">{m.label}</span>
+                            <span className="list-date-meal-counts">
+                              🧑{t[m.key].adults} 🧒{t[m.key].children}
+                            </span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </div>
+
+                  {rows.map((s) => {
+                    const isOwner = user && s.uid && user.uid === s.uid;
+                    const isEditing = editingId === s.id;
+                    return (
+                      <div key={s.id} className="list-signup-row">
+                        <span className="list-signup-name">{displayName(s)}</span>
+
+                        {isEditing ? (
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+                            {[["almuerzo","Alm."],["comida","Com."],["cena","Cena"]].map(([field, lbl]) => (
+                              <label key={field} style={{ fontSize: 13, display: "flex", gap: 4, alignItems: "center" }}>
+                                <input type="checkbox" checked={!!editData[field]}
+                                  onChange={(e) => setEditData((p) => ({ ...p, [field]: e.target.checked }))} />
+                                {lbl}
+                              </label>
+                            ))}
+                            <input type="number" min="0" value={editData.adults}
+                              onChange={(e) => setEditData((p) => ({ ...p, adults: e.target.value }))}
+                              style={{ width: 55, padding: "4px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
+                              placeholder="Ad." />
+                            <input type="number" min="0" value={editData.children}
+                              onChange={(e) => setEditData((p) => ({ ...p, children: e.target.value }))}
+                              style={{ width: 55, padding: "4px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }}
+                              placeholder="Ni." />
+                          </div>
+                        ) : (
+                          <>
+                            <span className="list-signup-meals">{comidasLabel(s)}</span>
+                            <div className="list-signup-counts">
+                              <span>🧑 {s.adults || 0}</span>
+                              <span>🧒 {s.children || 0}</span>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="list-signup-actions">
+                          {isOwner && (
+                            isEditing ? (
+                              <>
+                                <button className="btn small" onClick={() => onSaveEdit(s.id)} disabled={savingEdit}>
+                                  {savingEdit ? "..." : "Guardar"}
+                                </button>
+                                <button className="btn outline small" onClick={() => setEditingId(null)}>✕</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn small" onClick={() => onEditClick(s)}>Editar</button>
+                                <button className="btn outline small" onClick={() => onDelete(s.id)}>Borrar</button>
+                              </>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
+
+      {/* Botón fijo al fondo */}
+      {!loading && (
+        <div className="page-bottom-nav">
+          <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
+        </div>
+      )}
     </div>
   );
 }

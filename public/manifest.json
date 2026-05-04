@@ -4,8 +4,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#2563eb",
-  "background_color": "#ffffff",
+  "theme_color": "#6A8F3A",
+  "background_color": "#D8E79B",
   "description": "La Toalla - app",
   "icons": [
     {

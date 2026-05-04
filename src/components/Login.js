@@ -4,7 +4,7 @@ import { auth } from "../firebase";
 import RegisterForm from "./RegisterForm";
 import ResetPassword from "./ResetPassword";
 import { useNavigate } from "react-router-dom";
-import loco from "../assets/loco.png";
+import loco from "../assets/logo.png";
 import InstallButton from "./InstallButton"; // botón circular junto al logo
 
 export default function Login() {

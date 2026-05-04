@@ -1,11 +1,11 @@
 import React from "react";
 import EventSignupForm from "../components/EventSignupForm";
 
-export default function FiestasDeSantiago() {
+export default function FiestasJuventud() {
   return (
     <EventSignupForm
-      eventType="fiestas"
-      title="Inscripción — Fiestas de Santiago"
+      eventType="juventud"
+      title="Inscripción — Fiestas de la Juventud"
     />
   );
 }
