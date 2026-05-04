@@ -109,7 +109,9 @@ export default function EventSignupForm({ eventType, title }) {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const d = userDoc.data();
+            // Usar alias como nombre visible en listados; si no, nombre completo
             nameToSave =
+              d.alias ||
               d.name ||
               `${d.firstName || ""} ${d.lastName || ""}`.trim() ||
               null;

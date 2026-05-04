@@ -1,47 +1,33 @@
-// Service Worker básico: cache-first para recursos estáticos y fallback network
-const CACHE_NAME = "toalla-app-v1";
-const urlsToCache = ["/", "/index.html", "/styles.css", "/loco.png"];
+// simple service worker: activa rápido y hace fallback a cache si la red falla
+const CACHE_NAME = 'toalla-app-cache-v1';
+const FALLBACK_URL = '/index.html';
 
-// Install - cache core assets
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache).catch(() => {
-        // no bloquear si falta algún recurso
-      });
-    })
-  );
+self.addEventListener('install', event => {
+  // evita esperar para que tome control de la página inmediatamente
   self.skipWaiting();
-});
-
-// Activate - clean old caches
-self.addEventListener("activate", (event) => {
+  // cachea el index.html inmediatamente para mejorar la instalabilidad/offline básica
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.map((k) => {
-          if (k !== CACHE_NAME) return caches.delete(k);
-        })
-      )
-    )
+    caches.open(CACHE_NAME).then(cache => cache.addAll([FALLBACK_URL]))
   );
-  self.clients.claim();
 });
 
-// Fetch - respond with cache, fallback to network
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+self.addEventListener('activate', event => {
+  // toma control de las pestañas ya abiertas
+  event.waitUntil(self.clients.claim());
+});
+
+// Para peticiones GET: primero intento la red, si falla uso cache
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((res) => {
-          // opcional: cache dynamic assets
-          return res;
-        })
-        .catch(() => {
-          // fallback si quieres (imagen por defecto, etc.)
-        });
-    })
+    fetch(event.request)
+      .then(response => {
+        // opcional: podrías cachear respuestas aquí si quieres
+        return response;
+      })
+      .catch(() =>
+        caches.match(event.request).then(cached => cached || caches.match(FALLBACK_URL))
+      )
   );
 });

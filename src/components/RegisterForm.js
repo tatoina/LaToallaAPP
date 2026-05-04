@@ -4,13 +4,16 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 export default function RegisterForm({ onRegistered = () => {}, onCancel = () => {} }) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [error, setError] = useState("");
+  const [firstName, setFirstName]     = useState("");
+  const [lastName, setLastName]       = useState("");
+  const [alias, setAlias]             = useState("");
+  const [telefono, setTelefono]       = useState("");
+  const [fechaNac, setFechaNac]       = useState("");
+  const [email, setEmail]             = useState("");
+  const [password, setPassword]       = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [msg, setMsg]                 = useState("");
+  const [error, setError]             = useState("");
 
   const mapFirebaseError = (code, message) => {
     if (!code) return message || "Error desconocido";
@@ -24,39 +27,35 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
     e.preventDefault();
     setMsg("");
     setError("");
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
-      return;
-    }
+    if (!alias.trim()) { setError("El alias es obligatorio."); return; }
+    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
 
     setLoading(true);
-
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
-      // Guardamos nombre/apellido y email; eliminamos el campo 'username'
       await setDoc(doc(db, "users", uid), {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-        email: email.trim(),
-        createdAt: serverTimestamp()
+        firstName:   firstName.trim(),
+        lastName:    lastName.trim(),
+        name:        `${firstName.trim()} ${lastName.trim()}`.trim(),
+        alias:       alias.trim(),
+        telefono:    telefono.trim(),
+        fechaNac:    fechaNac,
+        email:       email.trim(),
+        createdAt:   serverTimestamp(),
       });
 
       try {
         await sendEmailVerification(userCredential.user);
         setMsg("Registro completado. Te hemos enviado un email de verificación.");
-      } catch (verifErr) {
-        console.warn("No se pudo enviar verificación:", verifErr);
+      } catch {
         setMsg("Registro completado. (No se pudo enviar el email de verificación)");
       }
 
       onRegistered();
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setPassword("");
+      setFirstName(""); setLastName(""); setAlias(""); setTelefono("");
+      setFechaNac(""); setEmail(""); setPassword("");
     } catch (err) {
       console.error("Register error:", err);
       setError(mapFirebaseError(err.code, err.message));
@@ -67,46 +66,29 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
 
   return (
     <form onSubmit={handleRegister} className="form register-form" noValidate>
-      <input
-        type="text"
-        placeholder="Nombre"
-        value={firstName}
-        onChange={(e) => setFirstName(e.target.value)}
-        required
-      />
-      <input
-        type="text"
-        placeholder="Apellido"
-        value={lastName}
-        onChange={(e) => setLastName(e.target.value)}
-        required
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        autoComplete="email"
-      />
-      <input
-        type="password"
-        placeholder="Contraseña (mín. 6 caracteres)"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        autoComplete="new-password"
-      />
+      <div className="register-row">
+        <input type="text" placeholder="Nombre *" value={firstName}
+          onChange={(e) => setFirstName(e.target.value)} required />
+        <input type="text" placeholder="Apellidos *" value={lastName}
+          onChange={(e) => setLastName(e.target.value)} required />
+      </div>
+      <input type="text" placeholder="Alias (aparece en listados) *" value={alias}
+        onChange={(e) => setAlias(e.target.value)} required />
+      <input type="tel" placeholder="Teléfono" value={telefono}
+        onChange={(e) => setTelefono(e.target.value)} />
+      <label className="register-date-label">
+        <span>Fecha de nacimiento</span>
+        <input type="date" value={fechaNac} onChange={(e) => setFechaNac(e.target.value)} />
+      </label>
+      <input type="email" placeholder="Email *" value={email}
+        onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+      <input type="password" placeholder="Contraseña (mín. 6 caracteres) *" value={password}
+        onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
       <div className="actions">
         <button className="btn" type="submit" disabled={loading}>
           {loading ? "Registrando..." : "Crear cuenta"}
         </button>
-        <button
-          type="button"
-          className="btn outline"
-          onClick={onCancel}
-          style={{ marginLeft: 8 }}
-        >
+        <button type="button" className="btn outline" onClick={onCancel} style={{ marginLeft: 8 }}>
           Volver
         </button>
       </div>

@@ -465,6 +465,56 @@ h2 {
   margin-top: 2px;
 }
 
+.dash-header-date {
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.dash-header-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 1px;
+  margin-top: 1px;
+}
+
+.dash-header-email {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 3px;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+/* Formulario de registro ampliado */
+.register-row {
+  display: flex;
+  gap: 10px;
+}
+
+.register-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.register-date-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+}
+
+.register-date-label input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Grid 2x2 */
 .dash-grid {
   display: grid;
@@ -580,6 +630,44 @@ h2 {
   color: #b91c1c;
 }
 
+.dash-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding-bottom: 12px;
+}
+
+.dash-footer-version {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.5;
+}
+
+.dash-footer-sep {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.4;
+}
+
+.dash-footer-by {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.5;
+}
+
+.dash-footer-inalogo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  background: white;
+  border-radius: 6px;
+  padding: 3px 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+
 /* =============================================
    LISTADO UNIFICADO — FiestasList
    ============================================= */
@@ -616,6 +704,190 @@ h2 {
 }
 
 .list-event-tabs::-webkit-scrollbar { display: none; }
+
+/* =============================================
+   ADMIN PANEL
+   ============================================= */
+.admin-page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.admin-topbar h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.admin-tab {
+  flex: 1;
+  padding: 11px 8px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1.5px solid rgba(0,0,0,0.10);
+  background: white;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.admin-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 3px 10px rgba(106,143,58,0.25);
+}
+
+.admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-user-card,
+.admin-signup-card {
+  background: white;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-user-info,
+.admin-signup-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-user-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-user-email {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-user-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.admin-user-edit,
+.admin-signup-edit {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.admin-input-sm {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.btn.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.btn.danger:hover {
+  background: #fecaca;
+}
+
+.dash-secondary-btn.admin {
+  border-color: rgba(185,28,28,0.25);
+  background: #fff5f5;
+  color: #b91c1c;
+}
+
+.dash-secondary-btn.admin:hover {
+  background: #fee2e2;
+}
+
+/* Vista exclusiva admin en Dashboard */
+.dash-admin-only {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 32px 0 16px;
+}
+
+.dash-admin-only-label {
+  font-size: 13px;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.dash-admin-only-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 18px 24px;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 6px 20px rgba(106,143,58,0.30);
+  transition: transform 0.12s, box-shadow 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dash-admin-only-btn:active {
+  transform: scale(0.97);
+}
 
 /* Filtro de comida */
 .meal-filter-bar {

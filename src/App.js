@@ -9,6 +9,7 @@ import FiestasList from "./pages/FiestasList";
 import Ferias from "./pages/Ferias";
 import GestionStock from "./pages/GestionStock";
 import EventosTemporales from "./pages/EventosTemporales";
+import AdminPanel from "./pages/AdminPanel";
 import { useAuth } from "./contexts/AuthContext";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
@@ -18,6 +19,17 @@ function RequireAuth({ children }) {
 
   if (loading) return <div className="centered">Cargando...</div>;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  return children;
+}
+
+function RequireAdmin({ children }) {
+  const { user, isAdmin, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <div className="centered">Cargando...</div>;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return children;
 }
@@ -85,6 +97,14 @@ export default function App() {
             <RequireAuth>
               <EventosTemporales />
             </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireAdmin>
+              <AdminPanel />
+            </RequireAdmin>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
