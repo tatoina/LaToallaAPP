@@ -13,7 +13,8 @@ import {
   where,
 } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { db, auth } from "../firebase";
+import { db, auth, functions } from "../firebase";
+import { httpsCallable } from "firebase/functions";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -75,10 +76,17 @@ export default function AdminPanel() {
     finally { setSavingUser(false); }
   };
 
-  const onDeleteUser = async (uid) => {
-    if (!window.confirm("¿Borrar usuario? Solo se borra su perfil, no su cuenta de acceso.")) return;
-    try { await deleteDoc(doc(db, "users", uid)); }
-    catch (e) { alert("Error: " + e.message); }
+  const onDeleteUser = async (u) => {
+    const nombre = userName(u);
+    if (!window.confirm(
+      `⚠️ ¿Borrar a "${nombre}" completamente?\n\n` +
+      `Se eliminará su cuenta de acceso y su perfil.\n` +
+      `Tendrá que registrarse de nuevo si quiere volver a entrar.`
+    )) return;
+    try {
+      const deleteUserAccount = httpsCallable(functions, "deleteUserAccount");
+      await deleteUserAccount({ uid: u.id });
+    } catch (e) { alert("Error: " + e.message); }
   };
 
   const onResetPassword = async (u) => {
@@ -312,7 +320,7 @@ export default function AdminPanel() {
                       >
                         🔑 Reset
                       </button>
-                      <button className="btn danger small" onClick={() => onDeleteUser(u.id)}>🗑️</button>
+                      <button className="btn danger small" onClick={() => onDeleteUser(u)}>🗑️</button>
                     </div>
                   </>
                 )}

@@ -243,7 +243,7 @@ export default function FiestasList() {
                           <div key={m.key} className={`list-date-meal ${m.color}`}>
                             <span className="list-date-meal-name">{m.label}</span>
                             <span className="list-date-meal-counts">
-                              🧑{t[m.key].adults} 🧒{t[m.key].children}
+                              Adultos: {t[m.key].adults} · Niños: {t[m.key].children}
                             </span>
                           </div>
                         ))
@@ -277,13 +277,13 @@ export default function FiestasList() {
                               placeholder="Ni." />
                           </div>
                         ) : (
-                          <>
+                          <div className="list-signup-details">
                             <span className="list-signup-meals">{comidasLabel(s)}</span>
                             <div className="list-signup-counts">
-                              <span>🧑 {s.adults || 0}</span>
-                              <span>🧒 {s.children || 0}</span>
+                              <span>Ad: {s.adults || 0}</span>
+                              <span>Ni: {s.children || 0}</span>
                             </div>
-                          </>
+                          </div>
                         )}
 
                         <div className="list-signup-actions">

@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDMO41dBZm5UF8fldXfLhu_WSrE0TZAKi8",
@@ -20,4 +21,5 @@ if (!getApps().length) {
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const functions = getFunctions(app, "us-central1");
 export default app;

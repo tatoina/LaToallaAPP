@@ -2,8 +2,10 @@
 import {
   collection,
   addDoc,
+  deleteDoc,
   serverTimestamp,
   getDoc,
+  setDoc,
   doc,
   query,
   where,
@@ -27,6 +29,13 @@ function getDayName(iso) {
 function formatShort(iso) {
   const [, m, d] = iso.split("-");
   return `${parseInt(d)} ${MONTHS_ES[parseInt(m) - 1]}`;
+}
+
+function formatDateLargo(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T12:00:00");
+  const wd = WEEKDAYS_ES[d.getDay() === 0 ? 6 : d.getDay() - 1];
+  return `${wd}, ${d.getDate()} de ${MONTHS_ES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
 function MultiDateCalendar({ selected, onChange, defaultMonth }) {
@@ -83,11 +92,18 @@ function MultiDateCalendar({ selected, onChange, defaultMonth }) {
   );
 }
 
-export default function EventSignupForm({ eventType, title, defaultMonth }) {
+export default function EventSignupForm({ eventType, title, defaultMonth, singleDay, fixedDate, dateInfoText, configKey }) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [selectedDates, setSelectedDates] = useState(new Set());
+  const [editingDay, setEditingDay] = useState(!fixedDate);
+  const [pendingDate, setPendingDate] = useState("");
+  const [settingDate, setSettingDate] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  const [selectedDates, setSelectedDates] = useState(() =>
+    singleDay && fixedDate ? new Set([fixedDate]) : new Set()
+  );
   const [almuerzo, setAlmuerzo] = useState(false);
   const [comida, setComida] = useState(false);
   const [cena, setCena] = useState(false);
@@ -106,7 +122,7 @@ export default function EventSignupForm({ eventType, title, defaultMonth }) {
   }, []);
 
   const resetForm = () => {
-    setSelectedDates(new Set());
+    setSelectedDates(singleDay && fixedDate ? new Set([fixedDate]) : new Set());
     setAlmuerzo(false);
     setComida(false);
     setCena(false);
@@ -141,12 +157,33 @@ export default function EventSignupForm({ eventType, title, defaultMonth }) {
     }
   }
 
+  const handleEstablecerFecha = async () => {
+    if (!pendingDate) return;
+    const formatted = formatDateLargo(pendingDate);
+    const confirmed = window.confirm(
+      `\u00bfEstablecer "${formatted}" como fecha del evento?\n\nSe borrar\u00e1n las inscripciones anteriores y se notificar\u00e1 a todos los usuarios por email.`
+    );
+    if (!confirmed) return;
+    setSettingDate(true);
+    try {
+      const q = query(collection(db, "fiestas_signups"), where("eventType", "==", eventType));
+      const snap = await getDocs(q);
+      await Promise.all(snap.docs.map((d) => deleteDoc(doc(db, "fiestas_signups", d.id))));
+      await setDoc(doc(db, "config", configKey), { fixedDate: pendingDate, dateInfoText: formatted, notifyUsers: true }, { merge: true });
+      setPendingDate("");
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      setSettingDate(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setMsg("");
 
-    if (selectedDates.size === 0) return setError("Selecciona al menos una fecha.");
+    if (!singleDay && selectedDates.size === 0) return setError("Selecciona al menos una fecha.");
     if (!almuerzo && !comida && !cena)
       return setError("Marca al menos Almuerzo, Comida o Cena.");
     if (Number(adults) < 0 || Number(children) < 0)
@@ -216,30 +253,155 @@ export default function EventSignupForm({ eventType, title, defaultMonth }) {
         <h2 className="page-header-title">{title}</h2>
       </div>
       <div className="card" style={{ padding: 16 }}>
-        <form onSubmit={handleSubmit} className="form" style={{ marginTop: 8 }}>
-          <label>Fechas</label>
-          <MultiDateCalendar selected={selectedDates} onChange={setSelectedDates} defaultMonth={defaultMonth} />
-
-          {sortedSelected.length > 0 && (
-            <div className="mdc-chips">
-              {sortedSelected.map(iso => (
-                <span key={iso} className="mdc-chip">
-                  {formatShort(iso)} · {getDayName(iso)}
-                  <button
-                    type="button"
-                    className="mdc-chip-remove"
-                    onClick={() => {
-                      const next = new Set(selectedDates);
-                      next.delete(iso);
-                      setSelectedDates(next);
-                    }}
-                  >✕</button>
-                </span>
-              ))}
+        {showHelp && (
+          <div
+            onClick={() => setShowHelp(false)}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+              zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#fff", borderRadius: 16, padding: "24px 20px",
+                maxWidth: 360, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 14, color: "var(--accent)" }}>
+                {"📅"} ¿Cómo funciona?
+              </div>
+              {singleDay ? (
+                <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.8, color: "#333" }}>
+                  <li>El <strong>primer usuario en entrar</strong> selecciona la fecha del evento y pulsa <em>"Establecer esta fecha"</em>.</li>
+                  <li>Se envía un <strong>email automático</strong> a todos los usuarios de la app avisando de la fecha.</li>
+                  <li>A partir de ese momento, el resto puede <strong>inscribirse</strong> con sus comidas y número de personas.</li>
+                </ol>
+              ) : (
+                <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.8, color: "#333" }}>
+                  <li>Pulsa en el <strong>calendario</strong> los días que quieras apuntarte — puedes marcar varios a la vez.</li>
+                  <li>Selecciona tus <strong>comidas</strong> (Almuerzo, Comida, Cena) — se aplicarán a <em>todos los días</em> que hayas marcado.</li>
+                  <li>Elige el <strong>número de adultos y niños</strong> y pulsa <em>"Apuntarme"</em>.</li>
+                </ol>
+              )}
+              <div style={{ marginTop: 16, fontSize: 12, color: "#888", background: "#f5f5f5", borderRadius: 8, padding: "8px 12px" }}>
+                {singleDay
+                  ? <>{"⚠️"} Al cambiar la fecha se borran las inscripciones anteriores.</>
+                  : <>{"💡"} Si quieres días con distintas comidas, envía una inscripción por cada grupo.</>}
+              </div>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="btn accent"
+                style={{ marginTop: 18, width: "100%" }}
+              >
+                Entendido
+              </button>
             </div>
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="form" style={{ marginTop: 8 }}>
+          {singleDay ? (
+            <div style={{
+              background: "rgba(106,143,58,0.10)",
+              border: "1.5px solid rgba(106,143,58,0.25)",
+              borderRadius: 12,
+              padding: "14px 16px",
+              marginBottom: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                <span style={{ fontSize: 13, color: "#666" }}>{"📅"} Selecciona la fecha del evento</span>
+                <button
+                  type="button"
+                  onClick={() => setShowHelp(true)}
+                  title="¿Cómo funciona?"
+                  style={{
+                    width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #aaa",
+                    background: "#fff", color: "#666", fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", lineHeight: 1, padding: 0, flexShrink: 0,
+                  }}
+                >
+                  ?
+                </button>
+              </div>
+              {!editingDay ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: "var(--accent)" }}>
+                    {dateInfoText || fixedDate}
+                  </span>
+                  <button type="button" onClick={() => setEditingDay(true)}
+                    style={{ fontSize: 12, background: "none", border: "1px solid #ccc", color: "#666", cursor: "pointer", padding: "2px 8px", borderRadius: 6, lineHeight: 1.4 }}>
+                    {"✏️"}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="date"
+                    value={pendingDate}
+                    onChange={(e) => setPendingDate(e.target.value)}
+                    style={{ display: "block", width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 15, boxSizing: "border-box", marginBottom: 8 }}
+                  />
+                  {pendingDate && (
+                    <>
+                      <div style={{ textAlign: "center", fontSize: 16, fontWeight: 700, color: "var(--accent)", marginBottom: 8 }}>
+                        {formatDateLargo(pendingDate)}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#8a5c00", background: "rgba(255,160,0,0.10)", border: "1px solid rgba(255,140,0,0.3)", borderRadius: 6, padding: "6px 10px", marginBottom: 8 }}>
+                        {"⚠️"} {"Se borrar\u00e1n las inscripciones anteriores y se notificar\u00e1 a todos."}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button type="button" className="btn accent" onClick={handleEstablecerFecha} disabled={settingDate} style={{ flex: 1 }}>
+                          {settingDate ? "Guardando..." : "✅ Establecer esta fecha"}
+                        </button>
+                        {fixedDate && (
+                          <button type="button" className="btn outline" onClick={() => { setEditingDay(false); setPendingDate(""); }} style={{ flex: "none" }}>Cancelar</button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <label style={{ margin: 0 }}>Fechas</label>
+                <button
+                  type="button"
+                  onClick={() => setShowHelp(true)}
+                  title="¿Cómo funciona?"
+                  style={{
+                    width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #aaa",
+                    background: "#fff", color: "#666", fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", lineHeight: 1, padding: 0, flexShrink: 0,
+                  }}
+                >
+                  ?
+                </button>
+              </div>
+              <MultiDateCalendar selected={selectedDates} onChange={setSelectedDates} defaultMonth={defaultMonth} />
+              {sortedSelected.length > 0 && (
+                <div className="mdc-chips">
+                  {sortedSelected.map(iso => (
+                    <span key={iso} className="mdc-chip">
+                      {formatShort(iso)} · {getDayName(iso)}
+                      <button
+                        type="button"
+                        className="mdc-chip-remove"
+                        onClick={() => {
+                          const next = new Set(selectedDates);
+                          next.delete(iso);
+                          setSelectedDates(next);
+                        }}
+                      >✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
-          <div style={{ display: "flex", gap: 16, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 8, alignItems: "center", justifyContent: "center" }}>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="checkbox" checked={almuerzo} onChange={(e) => setAlmuerzo(e.target.checked)} />
               Almuerzo
@@ -253,15 +415,32 @@ export default function EventSignupForm({ eventType, title, defaultMonth }) {
               Cena
             </label>
           </div>
+          {!singleDay && selectedDates.size > 1 && (
+            <div style={{ textAlign: "center", fontSize: 12, color: "var(--accent)", marginTop: 4 }}>
+              {"✅"} Las comidas seleccionadas se aplicarán a los {selectedDates.size} días marcados
+            </div>
+          )}
 
-          <label style={{ marginTop: 8 }}>
-            Adultos
-            <input type="number" min="0" value={adults} onChange={(e) => setAdults(e.target.value)} required />
-          </label>
-          <label>
-            Niños
-            <input type="number" min="0" value={children} onChange={(e) => setChildren(e.target.value)} />
-          </label>
+          <div style={{ display: "flex", gap: 24, marginTop: 12, justifyContent: "center", alignItems: "center" }}>
+            <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 15 }}>
+              Adultos
+              <input
+                type="number" min="0" value={adults} required
+                inputMode="numeric" pattern="[0-9]*"
+                onChange={(e) => setAdults(e.target.value)}
+                style={{ width: 72, textAlign: "center", padding: "10px 8px", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 22, fontWeight: 700 }}
+              />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 15 }}>
+              Niños
+              <input
+                type="number" min="0" value={children}
+                inputMode="numeric" pattern="[0-9]*"
+                onChange={(e) => setChildren(e.target.value)}
+                style={{ width: 72, textAlign: "center", padding: "10px 8px", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 22, fontWeight: 700 }}
+              />
+            </label>
+          </div>
 
           <div className="signup-btn-row">
             <button className="btn signup-submit-btn" type="submit" disabled={saving}>
@@ -274,12 +453,12 @@ export default function EventSignupForm({ eventType, title, defaultMonth }) {
 
           {error && <p className="error" role="alert">{error}</p>}
           {msg && <p className="info">{msg}</p>}
-        </form>
-      </div>
 
-      <div className="page-bottom-nav">
-        <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
-        <button className="nav-bottom-btn accent" onClick={() => navigate("/fiestas/list")}>📋 Ver listado</button>
+          <div className="page-bottom-nav" style={{ marginTop: 12 }}>
+            <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
+            <button className="nav-bottom-btn accent" onClick={() => navigate("/fiestas/list")}>📋 Ver listado</button>
+          </div>
+        </form>
       </div>
 
       {showPopup && (

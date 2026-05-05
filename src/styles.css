@@ -1045,9 +1045,49 @@ h2 {
   gap: 6px;
 }
 
+.list-signup-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .list-signup-actions {
   display: flex;
   gap: 4px;
+  margin-left: auto;
+}
+
+/* ── Móvil: filas de inscripción en dos líneas ── */
+@media (max-width: 520px) {
+  .list-signup-row {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .list-signup-name {
+    flex: 1 1 100%;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .list-signup-details {
+    flex: 1;
+    gap: 6px;
+  }
+  .list-signup-actions {
+    margin-left: 0;
+  }
+  .list-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .list-date-meal {
+    font-size: 12px;
+  }
+  .list-date-meal-counts {
+    font-size: 11px;
+  }
 }
 
 /* Totales globales (banner resumen) */
@@ -1613,6 +1653,7 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   gap: 10px;
   padding: 16px 0 8px;
   margin-top: 8px;
+  align-items: stretch;
 }
 
 .nav-bottom-btn {
@@ -1630,6 +1671,10 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   transition: transform 0.12s ease, box-shadow 0.12s ease;
   -webkit-tap-highlight-color: transparent;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
 }
 
 .nav-bottom-btn:hover {

@@ -1,4 +1,4 @@
-const { auth, pubsub, firestore: firestoreFn } = require("firebase-functions/v1");
+const { auth, pubsub, firestore: firestoreFn, https } = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
@@ -208,7 +208,120 @@ exports.onNewNoticia = firestoreFn
     return null;
   });
 
-// ─── 5. CANDIDATO AL COHETE ───────────────────────────────────────────────────
+// ─── 4. FECHA FIESTAS DE LA JUVENTUD ─────────────────────────────────────────
+// Se dispara cuando se guarda/actualiza config/juventud con notifyUsers=true
+exports.onJuventudFechaFijada = firestoreFn
+  .document("config/juventud")
+  .onWrite(async (change) => {
+    const data = change.after.exists ? change.after.data() : null;
+    if (!data || !data.notifyUsers) return null;
+
+    const fechaTexto = data.dateInfoText || data.fixedDate || "próximamente";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <h1 style="color:white;margin:0;font-size:22px">🎉 Fiestas de la Juventud</h1>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+          <p style="font-size:16px;color:#333">Ya está fijada la fecha de las <strong>Fiestas de la Juventud</strong>:</p>
+          <div style="background:rgba(106,143,58,0.10);border:1.5px solid rgba(106,143,58,0.25);border-radius:12px;padding:16px;text-align:center;margin:16px 0">
+            <div style="font-size:13px;color:#666;margin-bottom:4px">📅 Fecha del evento</div>
+            <div style="font-size:20px;font-weight:700;color:#4a7a1e">${fechaTexto}</div>
+          </div>
+          <p style="color:#555">¡Ya puedes apuntarte desde la app!</p>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
+            Apuntarme a las Fiestas
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+
+    if (emails.length === 0) {
+      console.log("No hay usuarios con email para notificar (juventud).");
+    } else {
+      for (const email of emails) {
+        try {
+          await sendMail(email, `🎉 Fiestas de la Juventud — ${fechaTexto}`, html);
+        } catch (err) {
+          console.error(`Error enviando a ${email}:`, err.message);
+        }
+      }
+      console.log(`Notificación Juventud enviada a ${emails.length} usuarios.`);
+    }
+
+    // Limpiar la bandera para no reenviar en el siguiente save
+    try {
+      await change.after.ref.update({ notifyUsers: false });
+    } catch (e) {
+      console.error("Error limpiando notifyUsers:", e.message);
+    }
+
+    return null;
+  });
+
+// ─── 5. FECHA FERIAS ──────────────────────────────────────────────────────────
+// Se dispara cuando se guarda/actualiza config/ferias con notifyUsers=true
+exports.onFeriasFechaFijada = firestoreFn
+  .document("config/ferias")
+  .onWrite(async (change) => {
+    const data = change.after.exists ? change.after.data() : null;
+    if (!data || !data.notifyUsers) return null;
+
+    const fechaTexto = data.dateInfoText || data.fixedDate || "próximamente";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <h1 style="color:white;margin:0;font-size:22px">🎡 Ferias</h1>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+          <p style="font-size:16px;color:#333">Ya está fijada la fecha de las <strong>Ferias</strong>:</p>
+          <div style="background:rgba(106,143,58,0.10);border:1.5px solid rgba(106,143,58,0.25);border-radius:12px;padding:16px;text-align:center;margin:16px 0">
+            <div style="font-size:13px;color:#666;margin-bottom:4px">📅 Fecha del evento</div>
+            <div style="font-size:20px;font-weight:700;color:#4a7a1e">${fechaTexto}</div>
+          </div>
+          <p style="color:#555">¡Ya puedes apuntarte desde la app!</p>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
+            Apuntarme a las Ferias
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+
+    if (emails.length === 0) {
+      console.log("No hay usuarios con email para notificar (ferias).");
+    } else {
+      for (const email of emails) {
+        try {
+          await sendMail(email, `🎡 Ferias — ${fechaTexto}`, html);
+        } catch (err) {
+          console.error(`Error enviando a ${email}:`, err.message);
+        }
+      }
+      console.log(`Notificación Ferias enviada a ${emails.length} usuarios.`);
+    }
+
+    try {
+      await change.after.ref.update({ notifyUsers: false });
+    } catch (e) {
+      console.error("Error limpiando notifyUsers (ferias):", e.message);
+    }
+
+    return null;
+  });
+
+// ─── 6. CANDIDATO AL COHETE ───────────────────────────────────────────────────
 // Se dispara cuando alguien es propuesto como candidato en "cohete_candidatos"
 exports.onNewCandidatoCohete = firestoreFn
   .document("cohete_candidatos/{candidatoId}")
@@ -441,3 +554,32 @@ exports.archivarCoheteAnual = pubsub
     console.log(`Cohete ${prevYear} archivado. Ganadores: ${winners.map((w) => w.nombre).join(", ") || "ninguno"}`);
     return null;
   });
+
+// ─── 8. BORRAR USUARIO (Auth + Firestore) ────────────────────────────────────
+// Callable function — solo admins pueden llamarla (verificado por Firestore admins/{uid})
+exports.deleteUserAccount = https.onCall(async (data, context) => {
+  // Verificar que quien llama está autenticado
+  if (!context.auth) {
+    throw new https.HttpsError("unauthenticated", "Debes estar autenticado.");
+  }
+
+  // Verificar que es admin consultando Firestore
+  const callerAdminDoc = await admin.firestore().collection("admins").doc(context.auth.uid).get();
+  if (!callerAdminDoc.exists) {
+    throw new https.HttpsError("permission-denied", "Solo los administradores pueden borrar usuarios.");
+  }
+
+  const { uid } = data;
+  if (!uid || typeof uid !== "string") {
+    throw new https.HttpsError("invalid-argument", "Se requiere un UID válido.");
+  }
+
+  // Borrar de Firebase Auth
+  await admin.auth().deleteUser(uid);
+
+  // Borrar documento de Firestore
+  await admin.firestore().collection("users").doc(uid).delete();
+
+  console.log(`Usuario ${uid} eliminado por admin ${context.auth.uid}`);
+  return { success: true };
+});
