@@ -288,7 +288,7 @@ export default function GestionStock() {
       </div>
 
       <div className="page-bottom-nav">
-        <button className="nav-bottom-btn" onClick={() => navigate("/")}>? Inicio</button>
+        <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
       </div>
     </div>
   );
