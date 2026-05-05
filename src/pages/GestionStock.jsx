@@ -14,7 +14,7 @@ import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 
 const CATEGORIAS = ["Bebida", "Comida", "Menaje", "Limpieza", "Otros"];
-const CAT_EMOJI = { Bebida: "??", Comida: "??", Menaje: "???", Limpieza: "??", Otros: "??" };
+const CAT_EMOJI = { Bebida: "🍺", Comida: "🍕", Menaje: "🍽️", Limpieza: "🧹", Otros: "📦" };
 const UNIDADES = ["uds", "litros", "kg", "cajas", "bolsas", "paquetes", "botellas", "latas"];
 
 const EMPTY_ITEM = { nombre: "", categoria: "Bebida", cantidad: "", unidad: "uds", notas: "" };
@@ -67,7 +67,7 @@ export default function GestionStock() {
       });
       setNewItem(EMPTY_ITEM);
       setShowForm(false);
-    } catch (err) { console.error(err); setAddError("Error al a�adir el art�culo."); }
+    } catch (err) { console.error(err); setAddError("Error al añadir el artículo."); }
     finally { setAdding(false); }
   };
 
@@ -99,7 +99,7 @@ export default function GestionStock() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("�Eliminar este art�culo del almac�n?")) return;
+    if (!window.confirm("¿Eliminar este artículo del almacén?")) return;
     try { await deleteDoc(doc(db, "stock", id)); }
     catch (err) { console.error(err); alert("Error al eliminar."); }
   };
@@ -181,16 +181,16 @@ export default function GestionStock() {
 
       <div className="gs-page">
         <div className="gs-header">
-          <h2 className="gs-title">?? Almac�n</h2>
+          <h2 className="gs-title">📦 Almacén</h2>
           <button className="btn small" onClick={() => { setShowForm(f => !f); setAddError(""); }}>
-            {showForm ? "? Cancelar" : "+ A�adir"}
+            {showForm ? "✕ Cancelar" : "+ Añadir"}
           </button>
         </div>
 
         <div className="gs-stats">
           <div className="gs-stat">
             <div className="gs-stat-value ok">{totalItems}</div>
-            <div className="gs-stat-label">Art�culos</div>
+            <div className="gs-stat-label">Artículos</div>
           </div>
           <div className="gs-stat">
             <div className="gs-stat-value low">{lowItems}</div>
@@ -204,10 +204,10 @@ export default function GestionStock() {
 
         {showForm && (
           <form className="gs-add-form" onSubmit={handleAdd}>
-            <h3>Nuevo art�culo</h3>
+            <h3>Nuevo artículo</h3>
             <div className="gs-form-grid">
               <label>Nombre *<input required value={newItem.nombre} onChange={e => setNewItem(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Agua mineral" /></label>
-              <label>Categor�a<select value={newItem.categoria} onChange={e => setNewItem(p => ({ ...p, categoria: e.target.value }))}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select></label>
+              <label>Categoría<select value={newItem.categoria} onChange={e => setNewItem(p => ({ ...p, categoria: e.target.value }))}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select></label>
               <label>Cantidad<input type="number" min="0" value={newItem.cantidad} onChange={e => setNewItem(p => ({ ...p, cantidad: e.target.value }))} placeholder="0" /></label>
               <label>Unidad<select value={newItem.unidad} onChange={e => setNewItem(p => ({ ...p, unidad: e.target.value }))}>{UNIDADES.map(u => <option key={u}>{u}</option>)}</select></label>
             </div>
@@ -220,7 +220,7 @@ export default function GestionStock() {
           </form>
         )}
 
-        <input className="gs-search" placeholder="??  Buscar art�culo..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input className="gs-search" placeholder="🔍  Buscar artículo..." value={search} onChange={e => setSearch(e.target.value)} />
 
         <div className="gs-cat-tabs">
           {["Todos", ...CATEGORIAS].map(cat => (
@@ -233,7 +233,7 @@ export default function GestionStock() {
         {loading ? (
           <div className="centered" style={{ marginTop: 32 }}>Cargando...</div>
         ) : grouped.length === 0 ? (
-          <div className="gs-empty">{search ? `Sin resultados para "${search}"` : "No hay art�culos en esta categor�a."}</div>
+          <div className="gs-empty">{search ? `Sin resultados para "${search}"` : "No hay artículos en esta categoría."}</div>
         ) : (
           grouped.map(({ cat, catItems }) => (
             <section key={cat}>
@@ -248,15 +248,15 @@ export default function GestionStock() {
                     <div className="gs-edit-card" key={item.id}>
                       <div className="gs-edit-grid">
                         <label className="gs-edit-label">Nombre<input className="gs-edit-input" value={editData.nombre} onChange={e => setEditData(p => ({ ...p, nombre: e.target.value }))} /></label>
-                        <label className="gs-edit-label">Categor�a<select className="gs-edit-input" value={editData.categoria} onChange={e => setEditData(p => ({ ...p, categoria: e.target.value }))}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select></label>
+                        <label className="gs-edit-label">Categoría<select className="gs-edit-input" value={editData.categoria} onChange={e => setEditData(p => ({ ...p, categoria: e.target.value }))}>{CATEGORIAS.map(c => <option key={c}>{c}</option>)}</select></label>
                         <label className="gs-edit-label">Cantidad<input className="gs-edit-input" type="number" min="0" value={editData.cantidad} onChange={e => setEditData(p => ({ ...p, cantidad: e.target.value }))} /></label>
                         <label className="gs-edit-label">Unidad<select className="gs-edit-input" value={editData.unidad} onChange={e => setEditData(p => ({ ...p, unidad: e.target.value }))}>{UNIDADES.map(u => <option key={u}>{u}</option>)}</select></label>
                       </div>
                       <label className="gs-edit-label" style={{ marginTop: 8 }}>Notas<input className="gs-edit-input" value={editData.notas} onChange={e => setEditData(p => ({ ...p, notas: e.target.value }))} placeholder="Notas..." /></label>
                       <div className="gs-edit-btns">
-                        <button className="btn small" onClick={() => saveEdit(item.id)} disabled={savingEdit}>{savingEdit ? "..." : "? Guardar"}</button>
+                        <button className="btn small" onClick={() => saveEdit(item.id)} disabled={savingEdit}>{savingEdit ? "..." : "✔ Guardar"}</button>
                         <button className="btn outline small" onClick={() => setEditingId(null)}>Cancelar</button>
-                        <button className="btn danger small" style={{ marginLeft: "auto" }} onClick={() => handleDelete(item.id)}>?? Borrar</button>
+                        <button className="btn danger small" style={{ marginLeft: "auto" }} onClick={() => handleDelete(item.id)}>🗑️ Borrar</button>
                       </div>
                     </div>
                   );
@@ -269,7 +269,7 @@ export default function GestionStock() {
                         <div className="gs-card-name">{item.nombre}</div>
                         {item.notas && <div className="gs-card-notes">{item.notas}</div>}
                       </div>
-                      <button className="btn outline small" onClick={() => startEdit(item)} style={{ fontSize: 12, flexShrink: 0 }}>?? Editar</button>
+                      <button className="btn outline small" onClick={() => startEdit(item)} style={{ fontSize: 12, flexShrink: 0 }}>✏️ Editar</button>
                     </div>
                     <div className="gs-qty-row">
                       <button className="gs-qty-btn" onClick={() => adjustQty(item, -1)}>-</button>
