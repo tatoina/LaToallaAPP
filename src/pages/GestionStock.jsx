@@ -124,7 +124,7 @@ export default function GestionStock() {
     <div className="page">
       <style>{`
         .gs-page { max-width: 680px; margin: 0 auto; padding: 16px; }
-        .gs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .gs-header { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 16px; }
         .gs-title { font-size: 20px; font-weight: 800; color: var(--text); margin: 0; }
 
         .gs-stats { display: flex; gap: 10px; margin-bottom: 16px; }
