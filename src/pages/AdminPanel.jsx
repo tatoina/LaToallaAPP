@@ -8,6 +8,8 @@ import {
   updateDoc,
   deleteDoc,
   getDocs,
+  addDoc,
+  serverTimestamp,
   where,
 } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -21,7 +23,8 @@ const EVENT_LABELS = {
   ferias:   "🎡 Ferias",
 };
 
-const TABS = ["Usuarios", "Inscripciones"];
+const TABS = ["Usuarios", "Inscripciones", "Noticias"];
+const NOTICIA_CATEGORIES = ["General", "Fiestas Juventud", "Fiestas Santiago", "Ferias", "Eventos"];
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -89,6 +92,52 @@ export default function AdminPanel() {
   };
 
   const userName = (u) => u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || u.id;
+
+  // ── NOTICIAS ──────────────────────────────────────────────
+  const [noticias, setNoticias] = useState([]);
+  const [noticiaForm, setNoticiaForm] = useState({
+    category: "General", title: "", body: "", imageUrl: "",
+  });
+  const [savingNoticia, setSavingNoticia] = useState(false);
+  const [noticiaMsg, setNoticiaMsg] = useState("");
+
+  useEffect(() => {
+    const q = query(collection(db, "noticias"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setNoticias(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  const onPublishNoticia = async () => {
+    if (!noticiaForm.title.trim() || !noticiaForm.body.trim()) {
+      setNoticiaMsg("❌ El título y el contenido son obligatorios.");
+      return;
+    }
+    setSavingNoticia(true);
+    setNoticiaMsg("");
+    try {
+      await addDoc(collection(db, "noticias"), {
+        category: noticiaForm.category,
+        title: noticiaForm.title.trim(),
+        body: noticiaForm.body.trim(),
+        imageUrl: noticiaForm.imageUrl.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setNoticiaForm({ category: "General", title: "", body: "", imageUrl: "" });
+      setNoticiaMsg("✅ Noticia publicada y email enviado a todos los usuarios.");
+      setTimeout(() => setNoticiaMsg(""), 5000);
+    } catch (e) {
+      setNoticiaMsg("❌ Error: " + e.message);
+    }
+    setSavingNoticia(false);
+  };
+
+  const onDeleteNoticia = async (id) => {
+    if (!window.confirm("¿Borrar esta noticia?")) return;
+    try { await deleteDoc(doc(db, "noticias", id)); }
+    catch (e) { alert("Error: " + e.message); }
+  };
 
   // ── INSCRIPCIONES ─────────────────────────────────────────
   const [signups, setSignups] = useState([]);
@@ -194,7 +243,7 @@ export default function AdminPanel() {
             className={`admin-tab${activeTab === t ? " active" : ""}`}
             onClick={() => setActiveTab(t)}
           >
-            {t === "Usuarios" ? "👥 Usuarios" : "📋 Inscripciones"}
+            {t === "Usuarios" ? "👥 Usuarios" : t === "Inscripciones" ? "📋 Inscripciones" : "📢 Noticias"}
           </button>
         ))}
       </div>
@@ -350,6 +399,107 @@ export default function AdminPanel() {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* ── PESTAÑA NOTICIAS ── */}
+      {activeTab === "Noticias" && (
+        <div className="admin-section">
+          {/* Formulario publicar */}
+          <div className="noticia-form-card">
+            <h3 className="noticia-form-title">📢 Publicar noticia</h3>
+
+            <select
+              className="admin-input"
+              value={noticiaForm.category}
+              onChange={(e) => setNoticiaForm((p) => ({ ...p, category: e.target.value }))}
+            >
+              {NOTICIA_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            <input
+              className="admin-input"
+              placeholder="Título"
+              value={noticiaForm.title}
+              onChange={(e) => setNoticiaForm((p) => ({ ...p, title: e.target.value }))}
+            />
+
+            <textarea
+              className="admin-textarea"
+              placeholder="Escribe la noticia o aviso..."
+              value={noticiaForm.body}
+              onChange={(e) => setNoticiaForm((p) => ({ ...p, body: e.target.value }))}
+              rows={5}
+            />
+
+            <div className="noticia-image-section">
+              <label className="noticia-img-label">🖼️ Imagen (opcional)</label>
+              <input
+                className="admin-input"
+                placeholder="Pega una URL de imagen..."
+                value={noticiaForm.imageUrl}
+                onChange={(e) => setNoticiaForm((p) => ({ ...p, imageUrl: e.target.value }))}
+              />
+              {noticiaForm.imageUrl && (
+                <img
+                  src={noticiaForm.imageUrl}
+                  alt="preview"
+                  className="noticia-img-preview"
+                  onError={(e) => { e.target.style.display = "none"; }}
+                />
+              )}
+            </div>
+
+            {noticiaMsg && (
+              <p className={`noticia-msg${noticiaMsg.startsWith("✅") ? " ok" : " err"}`}>
+                {noticiaMsg}
+              </p>
+            )}
+
+            <button
+              className="btn large"
+              onClick={onPublishNoticia}
+              disabled={savingNoticia}
+              style={{ marginTop: 4 }}
+            >
+              {savingNoticia ? "Publicando..." : "📤 Publicar y enviar email a todos"}
+            </button>
+          </div>
+
+          {/* Lista de noticias publicadas */}
+          <h3 style={{ fontSize: 15, margin: "20px 0 8px", color: "var(--text)" }}>Noticias publicadas</h3>
+          {noticias.length === 0 ? (
+            <p style={{ color: "#999", textAlign: "center" }}>No hay noticias publicadas aún.</p>
+          ) : (
+            noticias.map((n) => (
+              <div key={n.id} className="noticia-published-card">
+                <div className="noticia-published-body">
+                  <span className="noticia-category-badge">{n.category}</span>
+                  <p className="noticia-published-title">{n.title}</p>
+                  <p className="noticia-published-preview">
+                    {n.body.length > 90 ? n.body.slice(0, 90) + "..." : n.body}
+                  </p>
+                  {n.imageUrl && (
+                    <img
+                      src={n.imageUrl}
+                      alt="noticia"
+                      className="noticia-published-img"
+                      onError={(e) => { e.target.style.display = "none"; }}
+                    />
+                  )}
+                </div>
+                <button
+                  className="btn danger small"
+                  onClick={() => onDeleteNoticia(n.id)}
+                  style={{ flexShrink: 0, alignSelf: "flex-start" }}
+                >
+                  🗑️
+                </button>
+              </div>
+            ))
           )}
         </div>
       )}

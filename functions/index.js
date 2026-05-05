@@ -1,0 +1,443 @@
+const { auth, pubsub, firestore: firestoreFn } = require("firebase-functions/v1");
+const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
+
+admin.initializeApp();
+
+// ─── Nodemailer transporter con Gmail ─────────────────────────────────────────
+// Credenciales en functions/.env (GMAIL_EMAIL, GMAIL_PASSWORD)
+
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.GMAIL_EMAIL, pass: process.env.GMAIL_PASSWORD },
+  });
+}
+
+async function sendMail(to, subject, html) {
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: `"La Toalla App" <${process.env.GMAIL_EMAIL}>`,
+    to,
+    subject,
+    html,
+  });
+  console.log(`✉️ Email enviado a ${to}: ${subject}`);
+}
+
+function mailFooter() {
+  return `
+    <hr style="border:none;border-top:1px solid #e0e0e0;margin:28px 0 16px">
+    <p style="color:#aaa;font-size:11px;margin:0">La Toalla App · by INA SYSTEM</p>
+  `;
+}
+
+// ─── 1. EMAIL DE BIENVENIDA ────────────────────────────────────────────────────
+// Se dispara cuando Firebase Auth crea un nuevo usuario
+exports.onUserCreated = auth.user().onCreate(async (user) => {
+  if (!user.email) return null;
+
+  // Intentar obtener el perfil de Firestore (puede que aún no exista)
+  let name = user.displayName || user.email.split("@")[0];
+  try {
+    // Esperar un momento por si el doc de Firestore aún no se ha creado
+    await new Promise((r) => setTimeout(r, 2000));
+    const userDoc = await admin.firestore().collection("users").doc(user.uid).get();
+    if (userDoc.exists) {
+      const d = userDoc.data();
+      name =
+        d.alias ||
+        d.name ||
+        `${d.firstName || ""} ${d.lastName || ""}`.trim() ||
+        name;
+    }
+  } catch (e) {
+    console.log("No se pudo obtener perfil de Firestore:", e.message);
+  }
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+      <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+        <h1 style="color:white;margin:0;font-size:22px">¡Bienvenido/a a La Toalla! 🎉</h1>
+      </div>
+      <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+        <p style="font-size:16px">Hola <strong>${name}</strong>,</p>
+        <p>Ya formas parte de La Toalla App. Aquí podrás:</p>
+        <ul>
+          <li>📋 Apuntarte a Fiestas de Juventud, Santiago y Ferias</li>
+          <li>📅 Ver y unirte a Eventos Temporales</li>
+          <li>🏭 Consultar el stock del almacén</li>
+        </ul>
+        <a href="https://latoallaapp-daf6c.web.app"
+           style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
+          Abrir La Toalla App
+        </a>
+        ${mailFooter()}
+      </div>
+    </div>
+  `;
+
+  try {
+    await sendMail(user.email, "¡Bienvenido/a a La Toalla App! 🎉", html);
+  } catch (err) {
+    console.error("Error enviando bienvenida:", err.message);
+  }
+  return null;
+});
+
+// ─── 2. NOTIFICACIÓN NUEVO EVENTO TEMPORAL ────────────────────────────────────
+// Se dispara cuando se crea un doc en la colección "eventos"
+exports.onNewEvento = firestoreFn
+  .document("eventos/{eventoId}")
+  .onCreate(async (snap) => {
+    const evento = snap.data();
+    if (!evento) return null;
+
+    // Formatear fecha
+    let dateStr = evento.fecha || "";
+    try {
+      const d = new Date(evento.fecha + "T12:00:00");
+      dateStr = d.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      // Capitalizar primera letra
+      dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+    } catch {}
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <h1 style="color:white;margin:0;font-size:22px">📅 Nuevo Evento</h1>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+          <h2 style="color:#243123;margin:0 0 8px">${evento.nombre}</h2>
+          <p style="color:#6A8F3A;font-weight:bold;margin:0 0 12px">📆 ${dateStr}</p>
+          ${evento.descripcion ? `<p style="color:#555">${evento.descripcion}</p>` : ""}
+          <p>¡Entra en la app para apuntarte!</p>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
+            Apuntarme al evento
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    // Obtener todos los usuarios con email
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+
+    if (emails.length === 0) {
+      console.log("No hay usuarios con email para notificar.");
+      return null;
+    }
+
+    // Enviar de uno en uno para no saturar Gmail
+    for (const email of emails) {
+      try {
+        await sendMail(email, `📅 Nuevo evento: ${evento.nombre}`, html);
+      } catch (err) {
+        console.error(`Error enviando a ${email}:`, err.message);
+      }
+    }
+
+    console.log(`Notificación de evento enviada a ${emails.length} usuarios.`);
+    return null;
+  });
+
+// ─── 3. NOTICIA / AVISO A TODOS LOS USUARIOS ─────────────────────────────────
+// Se dispara cuando se crea un doc en la colección "noticias"
+exports.onNewNoticia = firestoreFn
+  .document("noticias/{noticiaId}")
+  .onCreate(async (snap) => {
+    const noticia = snap.data();
+    if (!noticia) return null;
+
+    const categoryEmoji = {
+      "General":          "📣",
+      "Fiestas Juventud": "🎉",
+      "Fiestas Santiago": "🎊",
+      "Ferias":           "🎡",
+      "Eventos":          "📅",
+    }[noticia.category] || "📢";
+
+    const imageBlock = noticia.imageUrl
+      ? `<img src="${noticia.imageUrl}" alt="" style="width:100%;border-radius:8px;margin:16px 0 0">`
+      : "";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <p style="color:rgba(255,255,255,0.8);font-size:13px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px">
+            ${categoryEmoji} ${noticia.category}
+          </p>
+          <h1 style="color:white;margin:0;font-size:20px">${noticia.title}</h1>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+          <p style="font-size:15px;color:#333;white-space:pre-wrap;line-height:1.6">${noticia.body}</p>
+          ${imageBlock}
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px">
+            Abrir La Toalla App
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+
+    if (emails.length === 0) {
+      console.log("No hay usuarios con email para notificar.");
+      return null;
+    }
+
+    for (const email of emails) {
+      try {
+        await sendMail(email, `${categoryEmoji} ${noticia.title}`, html);
+      } catch (err) {
+        console.error(`Error enviando noticia a ${email}:`, err.message);
+      }
+    }
+
+    console.log(`Noticia enviada a ${emails.length} usuarios.`);
+    return null;
+  });
+
+// ─── 5. CANDIDATO AL COHETE ───────────────────────────────────────────────────
+// Se dispara cuando alguien es propuesto como candidato en "cohete_candidatos"
+exports.onNewCandidatoCohete = firestoreFn
+  .document("cohete_candidatos/{candidatoId}")
+  .onCreate(async (snap) => {
+    const candidato = snap.data();
+    if (!candidato || !candidato.candidateUid) return null;
+
+    const year = new Date().getFullYear();
+
+    // Obtener los datos del candidato desde Firestore
+    const userDoc = await admin.firestore().collection("users").doc(candidato.candidateUid).get();
+    if (!userDoc.exists) {
+      console.log("Usuario candidato no encontrado en Firestore.");
+      return null;
+    }
+
+    const userData = userDoc.data();
+    if (!userData.email) {
+      console.log("El candidato no tiene email registrado.");
+      return null;
+    }
+
+    const nombre =
+      userData.alias ||
+      userData.name ||
+      `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+      "amigo/a";
+
+    const proposedBy = candidato.proposedByName || "alguien del grupo";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#1a1a2e;border-radius:12px 12px 0 0;padding:32px 24px;text-align:center">
+          <div style="font-size:56px;margin-bottom:12px">🚀</div>
+          <h1 style="color:white;margin:0;font-size:22px;letter-spacing:1px;text-transform:uppercase">
+            ¡Has sido elegido candidato!
+          </h1>
+          <p style="color:rgba(255,255,255,0.7);margin:8px 0 0;font-size:14px;letter-spacing:0.5px">
+            Fiestas de Santiago ${year}
+          </p>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:28px;text-align:center">
+          <p style="font-size:17px;color:#243123;margin:0 0 12px">
+            Hola <strong>${nombre}</strong>,
+          </p>
+          <p style="font-size:15px;color:#555;line-height:1.6;margin:0 0 12px">
+            <strong>${proposedBy}</strong> te ha propuesto como candidato para
+            <strong>tirar el cohete en las Fiestas de Santiago ${year}</strong>. 🎆
+          </p>
+          <p style="font-size:14px;color:#888;font-style:italic;margin:0 0 8px">
+            Motivo: "${candidato.motivo}"
+          </p>
+          <p style="font-size:15px;color:#555;margin:16px 0">
+            El resto de los socios están votando. ¿Ganarás tú?
+          </p>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#1a1a2e;color:white;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:4px;font-size:15px">
+            Ver votación 🚀
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    try {
+      await sendMail(
+        userData.email,
+        `🚀 ¡Eres candidato para tirar el cohete! Fiestas ${year}`,
+        html
+      );
+      console.log(`Email de candidato enviado a ${userData.email}`);
+    } catch (err) {
+      console.error(`Error enviando email de candidato: ${err.message}`);
+    }
+
+    return null;
+  });
+
+// ─── 4. FELICITACIÓN DE CUMPLEAÑOS ────────────────────────────────────────────
+exports.checkBirthdays = pubsub
+  .schedule("0 9 * * *")
+  .timeZone("Europe/Madrid")
+  .onRun(async () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const todayMMDD = `${month}-${day}`;
+
+    const usersSnap = await admin.firestore().collection("users").get();
+    let sent = 0;
+
+    for (const userDoc of usersSnap.docs) {
+      const data = userDoc.data();
+      if (!data.email || !data.fechaNac) continue;
+
+      // fechaNac guardado como YYYY-MM-DD → extraer MM-DD
+      const birthMMDD = data.fechaNac.slice(5);
+      if (birthMMDD !== todayMMDD) continue;
+
+      const name =
+        data.alias ||
+        data.name ||
+        `${data.firstName || ""} ${data.lastName || ""}`.trim() ||
+        "amigo/a";
+
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+          <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+            <h1 style="color:white;margin:0;font-size:26px">🎂 ¡Feliz Cumpleaños!</h1>
+          </div>
+          <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px;text-align:center">
+            <p style="font-size:18px">Hola <strong>${name}</strong> 🎉</p>
+            <p style="font-size:15px;color:#555">
+              Todo el equipo de La Toalla te desea un día increíble.<br>
+              ¡Que lo pases genial! 🥳🎊
+            </p>
+            <a href="https://latoallaapp-daf6c.web.app"
+               style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
+              Abrir La Toalla App
+            </a>
+            ${mailFooter()}
+          </div>
+        </div>
+      `;
+
+      try {
+        await sendMail(data.email, `🎂 ¡Feliz Cumpleaños, ${name}!`, html);
+        sent++;
+      } catch (err) {
+        console.error(`Error enviando cumpleaños a ${data.email}:`, err.message);
+      }
+    }
+
+    console.log(`Cumpleaños: ${sent} emails enviados para ${todayMMDD}.`);
+    return null;
+  });
+
+// ─── 6. FELICES FIESTAS DE SANTIAGO — 25 de julio a las 12:00 ────────────────
+exports.felicesFiestasSantiago = pubsub
+  .schedule("0 10 25 7 *")   // 10:00 UTC = 12:00 hora España (CEST verano)
+  .timeZone("UTC")
+  .onRun(async () => {
+    const year = new Date().getFullYear();
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:linear-gradient(135deg,#8B0000,#C0392B);border-radius:12px 12px 0 0;padding:32px 24px;text-align:center">
+          <div style="font-size:52px;margin-bottom:10px">🎆🎇🎆</div>
+          <h1 style="color:white;margin:0;font-size:24px;letter-spacing:1px">
+            ¡FELICES FIESTAS!
+          </h1>
+          <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:15px;font-weight:700;letter-spacing:0.5px">
+            Santiago ${year}
+          </p>
+        </div>
+        <div style="background:#fffaf5;border:1px solid #f0d8cc;border-radius:0 0 12px 12px;padding:32px 28px;text-align:center">
+          <p style="font-size:22px;font-weight:900;color:#8B0000;margin:0 0 12px;letter-spacing:1px;line-height:1.4">
+            🏔️ VÍA SANTIAGO<br>
+            🙏 VÍA SOTORRAÑA<br>
+            🎉 GORA GARES!!<br>
+            🎊 ¡¡VIVA PUENTE!!
+          </p>
+          <p style="font-size:14px;color:#888;margin:20px 0 0">
+            Con todo el cariño de La Toalla · ${year}
+          </p>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#8B0000;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;font-size:15px">
+            Abrir La Toalla App 🚀
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+
+    if (emails.length === 0) {
+      console.log("No hay usuarios con email para felicitar.");
+      return null;
+    }
+
+    for (const email of emails) {
+      try {
+        await sendMail(email, `🎆 ¡Felices Fiestas de Santiago ${year}! · VÍA SANTIAGO · GORA GARES!!`, html);
+      } catch (err) {
+        console.error(`Error enviando felicitación a ${email}:`, err.message);
+      }
+    }
+
+    console.log(`Felicitación Fiestas Santiago ${year} enviada a ${emails.length} usuarios.`);
+    return null;
+  });
+
+// 7. archivarCoheteAnual — 1 de enero 00:00 UTC: guarda ganadores en histórico y limpia candidatos
+exports.archivarCoheteAnual = pubsub
+  .schedule("0 0 1 1 *")
+  .timeZone("UTC")
+  .onRun(async () => {
+    const prevYear = new Date().getFullYear() - 1;
+
+    const snap = await admin.firestore().collection("cohete_candidatos").get();
+    if (snap.empty) {
+      console.log(`No hay candidatos para archivar (año ${prevYear}).`);
+      return null;
+    }
+
+    const candidatos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const maxVotes = Math.max(...candidatos.map((c) => (c.votes || []).length));
+    const winners = maxVotes > 0
+      ? candidatos.filter((c) => (c.votes || []).length === maxVotes)
+      : [];
+
+    await admin.firestore().collection("cohete_historico").doc(String(prevYear)).set({
+      year: prevYear,
+      winners: winners.map((w) => ({
+        nombre: w.nombre,
+        candidateUid: w.candidateUid || null,
+        votes: (w.votes || []).length,
+      })),
+      isTie: winners.length > 1,
+      archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Borrar todos los candidatos del año anterior
+    const batch = admin.firestore().batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+
+    console.log(`Cohete ${prevYear} archivado. Ganadores: ${winners.map((w) => w.nombre).join(", ") || "ninguno"}`);
+    return null;
+  });

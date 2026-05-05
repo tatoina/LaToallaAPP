@@ -10,6 +10,7 @@ import Ferias from "./pages/Ferias";
 import GestionStock from "./pages/GestionStock";
 import EventosTemporales from "./pages/EventosTemporales";
 import AdminPanel from "./pages/AdminPanel";
+import VotacionCohete from "./pages/VotacionCohete";
 import { useAuth } from "./contexts/AuthContext";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
@@ -96,6 +97,14 @@ export default function App() {
           element={
             <RequireAuth>
               <EventosTemporales />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/votacion-cohete"
+          element={
+            <RequireAuth>
+              <VotacionCohete />
             </RequireAuth>
           }
         />

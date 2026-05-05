@@ -449,6 +449,14 @@ h2 {
   background: white;
   box-shadow: 0 4px 16px rgba(0,0,0,0.10);
   flex-shrink: 0;
+  transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease, box-shadow 0.25s ease;
+}
+
+.dash-header-logo--big {
+  width: 130px;
+  height: 130px;
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 
 .dash-header-title {
@@ -666,6 +674,14 @@ h2 {
   border-radius: 6px;
   padding: 3px 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  transition: height 0.25s ease, border-radius 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease;
+}
+
+.dash-footer-inalogo--big {
+  height: 72px;
+  border-radius: 12px;
+  padding: 6px 14px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
 }
 
 /* =============================================
@@ -1221,4 +1237,687 @@ h2 {
   border-color: var(--accent);
   color: white;
   box-shadow: 0 4px 14px rgba(106,143,58,0.25);
+}
+
+/* =============================================
+   NOTICIAS — Banner en Dashboard
+   ============================================= */
+.dash-noticia-banner {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+  border-left: 4px solid var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  overflow: hidden;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dash-noticia-inner {
+  flex: 1;
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.dash-noticia-cat {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.dash-noticia-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 3px 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-noticia-body {
+  font-size: 12px;
+  color: #555;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.dash-noticia-img {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 8px;
+  max-height: 120px;
+  object-fit: cover;
+}
+
+.dash-noticia-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #bbb;
+  cursor: pointer;
+  padding: 8px 12px;
+  line-height: 1;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.dash-noticia-close:hover { color: #888; }
+
+/* Botón cohete en dashboard */
+.dash-secondary-btn--cohete {
+  border-color: rgba(99,68,175,0.3);
+  background: linear-gradient(135deg, #fff, rgba(99,68,175,0.05));
+  color: #5b3fb5;
+}
+
+.dash-secondary-btn--cohete:hover {
+  background: rgba(99,68,175,0.08);
+}
+
+/* =============================================
+   ADMIN — Noticias tab
+   ============================================= */
+.admin-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.noticia-form-card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.noticia-form-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.noticia-image-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.noticia-img-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+}
+
+.noticia-img-preview {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.noticia-msg {
+  font-size: 13px;
+  margin: 0;
+  font-weight: 600;
+}
+.noticia-msg.ok { color: #16a34a; }
+.noticia-msg.err { color: #b91c1c; }
+
+.noticia-published-card {
+  background: white;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-left: 3px solid var(--accent);
+}
+
+.noticia-published-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.noticia-category-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(106,143,58,0.10);
+  border-radius: 20px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.noticia-published-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 3px;
+}
+
+.noticia-published-preview {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+.noticia-published-img {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 6px;
+  max-height: 80px;
+  object-fit: cover;
+}
+
+/* =============================================
+   VOTACIÓN COHETE
+   ============================================= */
+.cohete-page {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px 40px;
+  box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.cohete-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.nav-back-btn {
+  background: white;
+  border: none;
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.cohete-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+}
+
+.cohete-subtitle {
+  font-size: 12px;
+  color: var(--stone);
+  margin: 2px 0 0;
+}
+
+/* Barra de votos usados */
+.cohete-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+.cohete-votes-used {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cohete-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  border: 2px solid #d1d5db;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.cohete-dot.used {
+  background: #5b3fb5;
+  border-color: #5b3fb5;
+}
+
+.cohete-votes-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-left: 4px;
+}
+
+.cohete-propose-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.12s;
+  white-space: nowrap;
+}
+
+.cohete-propose-btn.active {
+  background: #888;
+}
+
+/* Formulario proponer */
+.cohete-form-card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  animation: slideDown 0.25s ease;
+}
+
+.cohete-form-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.cohete-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.cohete-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: white;
+  color: var(--text);
+  appearance: auto;
+}
+
+.cohete-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* Lista candidatos */
+.cohete-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cohete-empty {
+  text-align: center;
+  color: #888;
+  margin-top: 40px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.cohete-card {
+  background: white;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  transition: box-shadow 0.15s;
+}
+
+.cohete-card--leader {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 4px 20px rgba(245,158,11,0.18);
+}
+
+.cohete-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cohete-rank {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--stone);
+  min-width: 28px;
+  text-align: center;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.cohete-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cohete-nombre {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.cohete-propuesto {
+  font-size: 11px;
+  color: #888;
+}
+
+.cohete-motivo {
+  font-size: 13px;
+  color: #555;
+  font-style: italic;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* Botón de voto */
+.cohete-vote-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.cohete-vote-btn:hover:not(:disabled) {
+  background: #ede9fe;
+  border-color: #a78bfa;
+}
+
+.cohete-vote-btn.voted {
+  background: #5b3fb5;
+  border-color: #5b3fb5;
+  color: white;
+}
+
+.cohete-vote-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cohete-vote-icon {
+  font-size: 14px;
+  line-height: 1;
+  color: inherit;
+}
+
+.cohete-vote-count {
+  font-size: 16px;
+  font-weight: 800;
+  color: inherit;
+  line-height: 1;
+}
+
+/* Barra de progreso de votos */
+.cohete-bar-bg {
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.cohete-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #5b3fb5, #a78bfa);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+/* ── Countdown ── */
+.cohete-countdown-card {
+  width: 100%;
+  background: linear-gradient(135deg, #1a1a2e, #2d2d5e);
+  border-radius: 16px;
+  padding: 14px 12px 12px;
+  margin-bottom: 14px;
+  text-align: center;
+  box-shadow: 0 6px 24px rgba(26,26,46,0.30);
+}
+
+.cohete-countdown-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 10px;
+}
+
+.cohete-countdown-digits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.cohete-digit-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 7px 10px 6px;
+  min-width: 44px;
+}
+
+.cohete-digit {
+  font-size: 26px;
+  font-weight: 900;
+  color: white;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+}
+
+.cohete-digit-unit {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.cohete-digit-sep {
+  font-size: 22px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+.cohete-countdown-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  margin: 10px 0 0;
+  letter-spacing: 0.3px;
+}
+
+/* ── Banner ganador ── */
+.cohete-winner-card {
+  width: 100%;
+  background: linear-gradient(135deg, #7c3f00, #d4860a);
+  border-radius: 20px;
+  padding: 28px 20px;
+  margin-bottom: 14px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(212,134,10,0.35);
+  animation: pulseGold 2s ease-in-out infinite;
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 8px 30px rgba(212,134,10,0.35); }
+  50%       { box-shadow: 0 8px 40px rgba(212,134,10,0.60); }
+}
+
+.cohete-winner-fireworks {
+  font-size: 36px;
+  margin-bottom: 10px;
+}
+
+.cohete-winner-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.75);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 8px;
+}
+
+.cohete-winner-name {
+  font-size: 32px;
+  font-weight: 900;
+  color: white;
+  margin: 0 0 8px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.cohete-winner-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.70);
+  margin: 0;
+}
+
+/* ── Tarjeta ganadora en lista ── */
+.cohete-card--winner {
+  border: 2px solid #d4860a !important;
+  box-shadow: 0 4px 20px rgba(212,134,10,0.25) !important;
+}
+
+/* ── Botón voto switch (cambiar a otro candidato) ── */
+.cohete-vote-btn.switch {
+  border-color: #a78bfa;
+  color: #5b3fb5;
+}
+
+/* Votos cerrados (solo número) */
+.cohete-vote-count-closed {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--stone);
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: right;
+}
+.cohete-delete-btn {
+  background: none;
+  border: 1px solid #e57373;
+  border-radius: 8px;
+  color: #e57373;
+  font-size: 16px;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.cohete-delete-btn:hover {
+  background: #fdecea;
+}
+
+/* Histórico */
+.cohete-historico {
+  margin: 24px 0 8px;
+}
+.cohete-historico-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 10px;
+  letter-spacing: 0.3px;
+}
+.cohete-historico-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.cohete-historico-year {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--accent);
+  min-width: 48px;
+}
+.cohete-historico-winners {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cohete-historico-winner {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.cohete-historico-votes {
+  font-size: 12px;
+  color: #888;
 }
