@@ -241,15 +241,7 @@ export default function EventosTemporales() {
         `}</style>
 
         {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 8,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 4 }}>
           <h2 style={{ margin: 0 }}>EVENTOS TEMPORALES</h2>
           <button
             className="btn small"
