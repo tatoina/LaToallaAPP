@@ -180,8 +180,10 @@ export default function GestionStock() {
       `}</style>
 
       <div className="gs-page">
+        <div className="page-header">
+          <h2 className="page-header-title">📦 Almacén</h2>
+        </div>
         <div className="gs-header">
-          <h2 className="gs-title">📦 Almacén</h2>
           <button className="btn small" onClick={() => { setShowForm(f => !f); setAddError(""); }}>
             {showForm ? "✕ Cancelar" : "+ Añadir"}
           </button>

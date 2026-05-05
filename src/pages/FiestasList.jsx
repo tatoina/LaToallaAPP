@@ -178,8 +178,8 @@ export default function FiestasList() {
   return (
     <div className="list-page">
       {/* Cabecera */}
-      <div className="list-topbar">
-        <h2>Inscripciones</h2>
+      <div className="page-header">
+        <h2 className="page-header-title">📋 Inscripciones</h2>
       </div>
 
       {/* Tabs scrollables */}
@@ -221,40 +221,6 @@ export default function FiestasList() {
         <div className="centered">Cargando...</div>
       ) : (
         <>
-          {/* Totales globales del evento seleccionado */}
-          {filteredByTab.length > 0 && (() => {
-            const meals = [
-              { key: "almuerzo", label: "🥐 Almuerzo", color: "orange" },
-              { key: "comida",   label: "🍽️ Comida",   color: "orange" },
-              { key: "cena",     label: "🌙 Cena",     color: "purple" },
-            ];
-            const activeMeals = meals.filter((m) => grandTotals[m.key].adults + grandTotals[m.key].children > 0);
-            if (activeMeals.length === 0) return null;
-            return (
-              <div className="list-grand-totals">
-                {activeMeals.map((m) => (
-                  <div key={m.key} className={`list-meal-block ${m.color}`}>
-                    <div className="list-meal-block-title">{m.label}</div>
-                    <div className="list-meal-block-stats">
-                      <div className="list-meal-stat">
-                        <span className="list-meal-stat-label">Adultos</span>
-                        <span className="list-meal-stat-value">{grandTotals[m.key].adults}</span>
-                      </div>
-                      <div className="list-meal-stat">
-                        <span className="list-meal-stat-label">Niños</span>
-                        <span className="list-meal-stat-value">{grandTotals[m.key].children}</span>
-                      </div>
-                      <div className="list-meal-stat total">
-                        <span className="list-meal-stat-label">Total</span>
-                        <span className="list-meal-stat-value">{grandTotals[m.key].adults + grandTotals[m.key].children}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
           {grouped.length === 0 ? (
             <div className="list-section-card" style={{ padding: 20, textAlign: "center", color: "#999" }}>
               No hay inscripciones para {currentTabLabel}

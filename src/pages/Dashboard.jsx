@@ -19,6 +19,7 @@ export default function Dashboard() {
 
   const [now, setNow] = useState(new Date());
   const [logoExpanded, setLogoExpanded] = useState(false);
+  const audioRef = React.useRef(null);
   const [inaExpanded, setInaExpanded] = useState(false);
   const [latestNoticia, setLatestNoticia] = useState(null);
   const [noticiaVisible, setNoticiaVisible] = useState(true);
@@ -51,7 +52,19 @@ export default function Dashboard() {
           src={logo}
           alt="La Toalla"
           className={`dash-header-logo${logoExpanded ? " dash-header-logo--big" : ""}`}
-          onClick={() => setLogoExpanded(v => !v)}
+          onClick={() => {
+            const expanding = !logoExpanded;
+            setLogoExpanded(expanding);
+            if (audioRef.current) {
+              if (expanding) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(() => {});
+              } else {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+              }
+            }
+          }}
           style={{ cursor: "pointer" }}
         />
         <div>
@@ -118,7 +131,7 @@ export default function Dashboard() {
             </button>
             <button className="dash-secondary-btn dash-secondary-btn--cohete" onClick={() => navigate("/votacion-cohete")}>
               <span className="dash-sec-icon">🚀</span>
-              <span>Votación: ¿Quién tira el cohete? {new Date().getFullYear()}</span>
+              <span>Votación: ¿Quién tirará el cohete en {new Date().getFullYear()}?</span>
             </button>
           </div>
         </>
@@ -153,6 +166,7 @@ export default function Dashboard() {
           style={{ cursor: "pointer" }}
         />
       </div>
+      <audio ref={audioRef} src="/sonmisamigas.m4a" preload="auto" />
     </div>
   );
 }

@@ -231,8 +231,8 @@ export default function AdminPanel() {
 
   return (
     <div className="admin-page">
-      <div className="admin-topbar">
-        <h2>⚙️ Panel Admin</h2>
+      <div className="page-header">
+        <h2 className="page-header-title">⚙️ Panel Admin</h2>
       </div>
 
       {/* Tabs principales */}

@@ -6,6 +6,7 @@ export default function FiestasDeSantiago() {
     <EventSignupForm
       eventType="fiestas"
       title="Inscripción — Fiestas de Santiago"
+      defaultMonth={6}
     />
   );
 }
