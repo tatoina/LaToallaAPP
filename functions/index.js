@@ -574,8 +574,13 @@ exports.deleteUserAccount = https.onCall(async (data, context) => {
     throw new https.HttpsError("invalid-argument", "Se requiere un UID válido.");
   }
 
-  // Borrar de Firebase Auth
-  await admin.auth().deleteUser(uid);
+  // Borrar de Firebase Auth (si ya no existe, ignorar)
+  try {
+    await admin.auth().deleteUser(uid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw e;
+    console.log(`Usuario ${uid} ya no existía en Auth, borrando solo Firestore.`);
+  }
 
   // Borrar documento de Firestore
   await admin.firestore().collection("users").doc(uid).delete();

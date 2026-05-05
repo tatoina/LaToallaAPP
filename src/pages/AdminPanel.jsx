@@ -38,6 +38,7 @@ export default function AdminPanel() {
   const [editingUser, setEditingUser] = useState(null);
   const [editUserData, setEditUserData] = useState({});
   const [savingUser, setSavingUser] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(null);
   const [resetMsg, setResetMsg] = useState({});
 
   useEffect(() => {
@@ -83,10 +84,12 @@ export default function AdminPanel() {
       `Se eliminará su cuenta de acceso y su perfil.\n` +
       `Tendrá que registrarse de nuevo si quiere volver a entrar.`
     )) return;
+    setDeletingUser(u.id);
     try {
       const deleteUserAccount = httpsCallable(functions, "deleteUserAccount");
       await deleteUserAccount({ uid: u.id });
     } catch (e) { alert("Error: " + e.message); }
+    finally { setDeletingUser(null); }
   };
 
   const onResetPassword = async (u) => {
@@ -320,7 +323,7 @@ export default function AdminPanel() {
                       >
                         🔑 Reset
                       </button>
-                      <button className="btn danger small" onClick={() => onDeleteUser(u)}>🗑️</button>
+                      <button className="btn danger small" onClick={() => onDeleteUser(u)} disabled={deletingUser === u.id}>🗑️</button>
                     </div>
                   </>
                 )}
