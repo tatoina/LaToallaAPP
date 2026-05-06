@@ -48,6 +48,7 @@ export default function EventosTemporales() {
   const [signupData, setSignupData] = useState(EMPTY_SIGNUP);
   const [savingSignup, setSavingSignup] = useState(false);
   const [signupError, setSignupError] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "eventos"), orderBy("fecha", "asc"));
@@ -267,8 +268,33 @@ export default function EventosTemporales() {
 
   return (
     <div className="ev2-page">
-      <div className="page-header">
+      {/* Modal ayuda */}
+      {showHelp && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}
+          onClick={() => setShowHelp(false)}
+        >
+          <div style={{ background: "white", borderRadius: 18, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 26, textAlign: "center", marginBottom: 8 }}>📅</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", textAlign: "center", marginBottom: 14 }}>Cómo funciona</div>
+            <div style={{ fontSize: 13, color: "#444", lineHeight: 1.7 }}>
+              <p style={{ margin: "0 0 10px" }}>📌 <strong>Crear un evento</strong>: pulsa «+ Crear nuevo evento», rellena el nombre, fecha y descripción opcional y confirma.</p>
+              <p style={{ margin: "0 0 10px" }}>✋ <strong>Apuntarse</strong>: dentro de cada tarjeta elige las comidas (almuerzo / comida / cena) y el número de adultos y niños.</p>
+              <p style={{ margin: "0 0 10px" }}>🧾 <strong>Ajuste de cuentas</strong>: una vez creado el evento, pulsa el botón verde de la tarjeta para acceder al listado completo, donde encontrarás el <em>Ajuste de cuentas</em> (tickets, precio por persona, quién debe a quién) y el <em>Borrado de inscripciones</em>.</p>
+              <p style={{ margin: 0 }}>🗑️ <strong>Eliminar evento</strong>: el icono de papelera borra el evento y todas sus inscripciones.</p>
+            </div>
+            <button className="nav-bottom-btn" style={{ width: "100%", marginTop: 18 }} onClick={() => setShowHelp(false)}>Entendido</button>
+          </div>
+        </div>
+      )}
+
+      <div className="page-header" style={{ position: "relative" }}>
         <h2 className="page-header-title">📅 Eventos Temporales</h2>
+        <button
+          onClick={() => setShowHelp(true)}
+          style={{ position: "absolute", right: 0, top: 0, width: 26, height: 26, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+        >?</button>
       </div>
 
       {!showCreateForm ? (
