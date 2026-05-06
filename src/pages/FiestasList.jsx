@@ -773,10 +773,10 @@ export default function FiestasList() {
 
       {/* ─── BOTONES AJUSTE Y BORRADO ─── */}
       {mealRows.length > 0 && (
-        <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center" }}>
+        <div className="page-bottom-nav" style={{ marginTop: 14 }}>
           <button
-            className="btn"
-            style={{ flex: 1, fontSize: 13, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            className="nav-bottom-btn"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             onClick={() => setShowSettlement((prev) => !prev)}
           >
             <span>{showSettlement ? "▲ Cerrar ajuste" : "🧾 Ajuste de cuentas"}</span>
@@ -785,8 +785,8 @@ export default function FiestasList() {
             )}
           </button>
           <button
-            className="btn outline"
-            style={{ flex: 1, fontSize: 13, padding: "10px 12px", color: "#b42318", borderColor: "#f0cccc", background: "#fff5f5" }}
+            className="nav-bottom-btn"
+            style={{ color: "#b42318" }}
             onClick={async () => {
               const first = window.confirm(
                 `¿Borrar TODAS las inscripciones de ${mealInfo?.label || "esta comida"} del día ${selDate}?\n\nTambién se borrarán las cuentas guardadas si las hay.`
@@ -805,8 +805,9 @@ export default function FiestasList() {
             🗑️ Borrar inscripciones
           </button>
           <button
+            className="nav-bottom-btn"
+            style={{ flex: "0 0 44px", minWidth: "unset", padding: 0, fontSize: 13, fontWeight: 800, color: "#666" }}
             onClick={() => alert("🗑️ BORRADO DE INSCRIPCIONES\n\nBorra TODAS las inscripciones del día y comida seleccionados.\n\nTambién borra las cuentas guardadas (tickets, precios, etc.).\n\n⚠️ Se pedirá confirmación dos veces. No se puede deshacer.")}
-            style={{ width: 22, height: 22, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
           >?</button>
         </div>
       )}
