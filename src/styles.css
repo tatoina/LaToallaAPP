@@ -2303,7 +2303,7 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
 }
 
 .cohete-digit {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 900;
   color: white;
   line-height: 1;
@@ -2312,7 +2312,7 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
 }
 
 .cohete-digit-unit {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(255,255,255,0.55);
   text-transform: uppercase;
