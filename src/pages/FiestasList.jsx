@@ -589,7 +589,7 @@ export default function FiestasList() {
                     background: mealInfo?.color || "#3a6ea5",
                     color: "white", fontSize: 11, fontWeight: 700,
                   }}>
-                    <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <span>Usuario</span>
                       {selDate && mealInfo && (
                         <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85 }}>
