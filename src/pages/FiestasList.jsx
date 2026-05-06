@@ -248,9 +248,30 @@ export default function FiestasList() {
           balance: item.paid - owes,
         };
       })
-      .filter((item) => item.paid > 0)
       .sort((a, b) => b.balance - a.balance);
   }, [mealRows, cuentaData, childPrice, adultShare]);
+
+  // Lista mínima de transferencias para saldar deudas
+  const transferList = useMemo(() => {
+    if (!adultShare && !childPrice) return [];
+    const creditors = payerSummary
+      .filter((p) => p.balance > 0.005)
+      .map((p) => ({ ...p, rem: p.balance }));
+    const debtors = payerSummary
+      .filter((p) => p.balance < -0.005)
+      .map((p) => ({ ...p, rem: Math.abs(p.balance) }));
+    const transfers = [];
+    let ci = 0; let di = 0;
+    while (ci < creditors.length && di < debtors.length) {
+      const amount = Math.min(creditors[ci].rem, debtors[di].rem);
+      transfers.push({ from: debtors[di].name, to: creditors[ci].name, amount });
+      creditors[ci].rem -= amount;
+      debtors[di].rem -= amount;
+      if (creditors[ci].rem < 0.005) ci++;
+      if (debtors[di].rem < 0.005) di++;
+    }
+    return transfers;
+  }, [payerSummary, adultShare, childPrice]);
 
   const onEditClick = (row) => {
     setEditingId(row.id);
@@ -653,27 +674,52 @@ export default function FiestasList() {
                           </div>
 
                           <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>QUIEN TIENE QUE RECUPERAR DINERO</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>BALANCE POR PERSONA</div>
                             {payerSummary.length === 0 ? (
-                              <div style={{ color: "#888", fontSize: 12 }}>Cuando anadas tickets, aqui saldra cuanto se debe a cada pagador restando su propia parte.</div>
+                              <div style={{ color: "#888", fontSize: 12 }}>Cuando anadas tickets y precio por nino, aqui saldra el balance de cada persona.</div>
                             ) : (
-                              <div style={{ display: "grid", gap: 7 }}>
-                                {payerSummary.map((payer) => (
-                                  <div key={payer.id} style={{ borderRadius: 8, padding: "8px 9px", background: payer.balance >= 0 ? "#eef8e8" : "#fff2f2", border: `1px solid ${payer.balance >= 0 ? "#cfe4be" : "#f0cccc"}` }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, fontWeight: 700 }}>
-                                      <span>{payer.name}</span>
-                                      <span style={{ color: payer.balance >= 0 ? "#2f6b1b" : "#b42318" }}>
-                                        {payer.balance >= 0 ? `Debe recibir ${money(payer.balance)}` : `Debe pagar ${money(Math.abs(payer.balance))}`}
-                                      </span>
+                              <div style={{ display: "grid", gap: 6 }}>
+                                {payerSummary.map((payer) => {
+                                  const isPayer = payer.paid > 0;
+                                  const isZero = Math.abs(payer.balance) < 0.005;
+                                  const isPos = payer.balance > 0.005;
+                                  const bg = isZero ? "#f5f5f5" : isPos ? "#eef8e8" : "#fff2f2";
+                                  const border = isZero ? "#ddd" : isPos ? "#cfe4be" : "#f0cccc";
+                                  return (
+                                    <div key={payer.id} style={{ borderRadius: 8, padding: "8px 9px", background: bg, border: `1px solid ${border}` }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, fontWeight: 700 }}>
+                                        <span>{payer.name} {isPayer ? "🧾" : ""}</span>
+                                        <span style={{ color: isZero ? "#888" : isPos ? "#2f6b1b" : "#b42318" }}>
+                                          {isZero ? "En paz ✓" : isPos ? `↑ recibe ${money(payer.balance)}` : `↓ debe ${money(Math.abs(payer.balance))}`}
+                                        </span>
+                                      </div>
+                                      <div style={{ marginTop: 3, fontSize: 11, color: "#666", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                                        {isPayer && <span>Pago: {money(payer.paid)}</span>}
+                                        <span>Su parte: {money(payer.owes)}</span>
+                                        <span style={{ fontSize: 10, color: "#999" }}>({payer.adults}A/{payer.children}N)</span>
+                                      </div>
                                     </div>
-                                    <div style={{ marginTop: 4, fontSize: 11, color: "#666" }}>
-                                      Pago tickets: {money(payer.paid)} | Su parte: {money(payer.owes)}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
+
+                          {transferList.length > 0 && (
+                            <div style={{ border: "2px solid #f59e0b", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>💸 QUIEN PAGA A QUIEN</div>
+                              <div style={{ display: "grid", gap: 6 }}>
+                                {transferList.map((t, i) => (
+                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, padding: "7px 10px", background: "white", borderRadius: 8, border: "1px solid #fde68a" }}>
+                                    <span style={{ fontWeight: 700, color: "#b42318", flex: 1 }}>{t.from}</span>
+                                    <span style={{ color: "#f59e0b", fontWeight: 800, fontSize: 18 }}>→</span>
+                                    <span style={{ fontWeight: 700, color: "#2f6b1b", flex: 1, textAlign: "right" }}>{t.to}</span>
+                                    <span style={{ background: "#f59e0b", color: "white", borderRadius: 8, padding: "3px 10px", fontWeight: 800, fontSize: 13, minWidth: 72, textAlign: "center" }}>{money(t.amount)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           {(cuentaData.tickets || []).length > 0 && (
                             <button
@@ -690,12 +736,22 @@ export default function FiestasList() {
                                 txt += `Sale por adulto: ${money(adultShare)}\n`;
                                 if (payerSummary.length > 0) {
                                   txt += `${"-".repeat(32)}\n`;
+                                  txt += `BALANCE:\n`;
                                   payerSummary.forEach((p) => {
-                                    if (p.balance >= 0) {
-                                      txt += `✅ ${p.name} → RECIBE ${money(p.balance)}\n`;
+                                    if (p.balance > 0.005) {
+                                      txt += `✅ ${p.name} recibe ${money(p.balance)}\n`;
+                                    } else if (p.balance < -0.005) {
+                                      txt += `❌ ${p.name} debe ${money(Math.abs(p.balance))}\n`;
                                     } else {
-                                      txt += `💸 ${p.name} → DEBE pagar ${money(Math.abs(p.balance))}\n`;
+                                      txt += `✓ ${p.name} en paz\n`;
                                     }
+                                  });
+                                }
+                                if (transferList.length > 0) {
+                                  txt += `${"--".repeat(16)}\n`;
+                                  txt += `TRANSFERENCIAS:\n`;
+                                  transferList.forEach((t) => {
+                                    txt += `💸 ${t.from} → ${t.to}: ${money(t.amount)}\n`;
                                   });
                                 }
                                 if (navigator.share) {
