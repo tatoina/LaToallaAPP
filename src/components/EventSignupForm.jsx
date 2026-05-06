@@ -6,6 +6,8 @@ import {
   serverTimestamp,
   getDoc,
   setDoc,
+  updateDoc,
+  deleteField,
   doc,
   query,
   where,
@@ -177,7 +179,16 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
       setSettingDate(false);
     }
   };
-
+  const handleEliminarFecha = async () => {
+    if (!window.confirm("¿Eliminar la fecha del evento?\n\nEl evento quedará sin fecha hasta que se establezca una nueva. No se borrarán las inscripciones existentes.")) return;
+    try {
+      await updateDoc(doc(db, "config", configKey), { fixedDate: deleteField(), dateInfoText: deleteField() });
+      setEditingDay(true);
+      setPendingDate("");
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -332,6 +343,13 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
                     style={{ fontSize: 12, background: "none", border: "1px solid #ccc", color: "#666", cursor: "pointer", padding: "2px 8px", borderRadius: 6, lineHeight: 1.4 }}>
                     {"✏️"}
                   </button>
+                  {isAdmin && (
+                    <button type="button" onClick={handleEliminarFecha}
+                      style={{ fontSize: 12, background: "none", border: "1px solid #f0cccc", color: "#b42318", cursor: "pointer", padding: "2px 8px", borderRadius: 6, lineHeight: 1.4 }}
+                      title="Eliminar fecha">
+                      🗑️
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
