@@ -1200,11 +1200,11 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: rgba(106,143,58,0.07);
 }
 .mdc-month-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
   text-transform: capitalize;
@@ -1212,24 +1212,24 @@ h2 {
 .mdc-nav-btn {
   background: none;
   border: none;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   color: var(--accent);
-  padding: 0 6px;
+  padding: 0 4px;
   line-height: 1;
 }
 .mdc-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  padding: 6px;
-  gap: 3px;
+  padding: 4px;
+  gap: 2px;
 }
 .mdc-dow {
   text-align: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #999;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 .mdc-day {
   aspect-ratio: 1;
@@ -1239,10 +1239,11 @@ h2 {
   border-radius: 50%;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   color: var(--text);
   transition: background 0.1s;
+  max-height: 34px;
 }
 .mdc-day:hover {
   background: rgba(106,143,58,0.12);

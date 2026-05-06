@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
@@ -46,12 +46,7 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
         createdAt:   serverTimestamp(),
       });
 
-      try {
-        await sendEmailVerification(userCredential.user);
-        setMsg("Registro completado. Te hemos enviado un email de verificación.");
-      } catch {
-        setMsg("Registro completado. (No se pudo enviar el email de verificación)");
-      }
+      setMsg("Registro completado. ¡Bienvenido/a!");
 
       onRegistered();
       setFirstName(""); setLastName(""); setAlias(""); setTelefono("");

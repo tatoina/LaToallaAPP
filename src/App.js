@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import FiestasJuventud from "./pages/FiestasJuventud";
 import FiestasDeSantiago from "./pages/FiestasDeSantiago";
 import FiestasList from "./pages/FiestasList";
+import FiestasListSelector from "./pages/FiestasListSelector";
 import Ferias from "./pages/Ferias";
 import GestionStock from "./pages/GestionStock";
 import EventosTemporales from "./pages/EventosTemporales";
@@ -70,6 +71,14 @@ export default function App() {
         />
         <Route
           path="/fiestas/list"
+          element={
+            <RequireAuth>
+              <FiestasListSelector />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/fiestas/list/:eventKey"
           element={
             <RequireAuth>
               <FiestasList />

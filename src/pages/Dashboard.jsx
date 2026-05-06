@@ -22,7 +22,7 @@ export default function Dashboard() {
   const audioRef = React.useRef(null);
   const [inaExpanded, setInaExpanded] = useState(false);
   const [latestNoticia, setLatestNoticia] = useState(null);
-  const [noticiaVisible, setNoticiaVisible] = useState(true);
+  const [noticiaVisible, setNoticiaVisible] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -33,10 +33,13 @@ export default function Dashboard() {
     const q = query(collection(db, "noticias"), orderBy("createdAt", "desc"), limit(1));
     const unsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
-        setLatestNoticia({ id: snap.docs[0].id, ...snap.docs[0].data() });
-        setNoticiaVisible(true);
+        const noticia = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        setLatestNoticia(noticia);
+        const read = JSON.parse(localStorage.getItem("readNoticias") || "[]");
+        setNoticiaVisible(!read.includes(noticia.id));
       } else {
         setLatestNoticia(null);
+        setNoticiaVisible(false);
       }
     });
     return () => unsub();
@@ -101,7 +104,15 @@ export default function Dashboard() {
               </div>
               <button
                 className="dash-noticia-close"
-                onClick={() => setNoticiaVisible(false)}
+                onClick={() => {
+                  if (latestNoticia) {
+                    const read = JSON.parse(localStorage.getItem("readNoticias") || "[]");
+                    if (!read.includes(latestNoticia.id)) {
+                      localStorage.setItem("readNoticias", JSON.stringify([...read, latestNoticia.id]));
+                    }
+                  }
+                  setNoticiaVisible(false);
+                }}
                 aria-label="Cerrar"
               >
                 ×

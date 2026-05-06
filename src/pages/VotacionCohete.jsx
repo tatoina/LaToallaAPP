@@ -260,7 +260,7 @@ export default function VotacionCohete() {
             </div>
           </div>
           <p className="cohete-countdown-sub">
-            🎆 Lanzamiento: 25 de julio de {year} a las 11:00h
+            🎆 Lanzamiento: 24 de julio de {year} a las 11:00h
           </p>
         </div>
       ) : (
