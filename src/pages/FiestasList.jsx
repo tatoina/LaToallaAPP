@@ -59,7 +59,7 @@ export default function FiestasList() {
   const [selDate,  setSelDate]  = useState(null);
   const [selEvent, setSelEvent] = useState(urlKey || null);
   const [selMeal,  setSelMeal]  = useState(null);
-  const [editingId,  setEditingId]  = useState(null);
+  const [modalRow,  setModalRow]   = useState(null);
   const [editData,   setEditData]   = useState({ adults: 1, children: 0, almuerzo: false, comida: false, cena: false });
   const [savingEdit, setSavingEdit] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
@@ -274,7 +274,7 @@ export default function FiestasList() {
   }, [payerSummary, adultShare, childPrice]);
 
   const onEditClick = (row) => {
-    setEditingId(row.id);
+    setModalRow(row);
     setEditData({
       adults:   Number(row.adults   || 0),
       children: Number(row.children || 0),
@@ -294,7 +294,7 @@ export default function FiestasList() {
         comida:   !!editData.comida,
         cena:     !!editData.cena,
       });
-      setEditingId(null);
+      setModalRow(null);
     } catch (err) { console.error(err); alert("No se pudo guardar."); }
     finally { setSavingEdit(false); }
   };
@@ -398,6 +398,74 @@ export default function FiestasList() {
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "16px 12px 48px", boxSizing: "border-box" }}>
+
+      {/* ─── MODAL EDICIÓN ─── */}
+      {modalRow && (() => {
+        const canEdit = isAdmin || (user && modalRow.uid && user.uid === modalRow.uid);
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setModalRow(null); }}
+          >
+            <div style={{ background: "white", borderRadius: "18px 18px 0 0", width: "100%", maxWidth: 520, padding: "20px 18px 32px", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <span style={{ fontWeight: 800, fontSize: 16 }}>{userName(modalRow)}</span>
+                <button onClick={() => setModalRow(null)} style={{ border: "none", background: "none", fontSize: 22, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+              </div>
+
+              {canEdit ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                    {[["almuerzo","🥐 Almuerzo"],["comida","🍽️ Comida"],["cena","🌙 Cena"]].map(([field, lbl]) => (
+                      <label key={field} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, fontSize: 13, cursor: "pointer" }}>
+                        <input type="checkbox" checked={!!editData[field]}
+                          onChange={(e) => setEditData((p) => ({ ...p, [field]: e.target.checked }))}
+                          style={{ width: 20, height: 20 }} />
+                        {lbl}
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
+                      Adultos
+                      <input type="number" min="0" inputMode="numeric" value={editData.adults}
+                        onChange={(e) => setEditData((p) => ({ ...p, adults: e.target.value }))}
+                        style={{ padding: "10px", border: "1px solid #ddd", borderRadius: 8, fontSize: 16, textAlign: "center" }} />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
+                      Niños
+                      <input type="number" min="0" inputMode="numeric" value={editData.children}
+                        onChange={(e) => setEditData((p) => ({ ...p, children: e.target.value }))}
+                        style={{ padding: "10px", border: "1px solid #ddd", borderRadius: 8, fontSize: 16, textAlign: "center" }} />
+                    </label>
+                  </div>
+                  <button className="btn" style={{ width: "100%", padding: "12px", fontSize: 15 }}
+                    onClick={() => onSaveEdit(modalRow.id)} disabled={savingEdit}>
+                    {savingEdit ? "Guardando..." : "✓ Guardar cambios"}
+                  </button>
+                  <button className="btn outline" style={{ width: "100%", padding: "10px", fontSize: 13, color: "#b42318", borderColor: "#f0cccc" }}
+                    onClick={() => { setModalRow(null); onDelete(modalRow.id); }}>
+                    🗑️ Borrar inscripción
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ background: "#f5f5f5", borderRadius: 10, padding: 12, fontSize: 13, color: "#555" }}>
+                    <div>Adultos: <strong>{modalRow.adults || 0}</strong></div>
+                    <div>Niños: <strong>{modalRow.children || 0}</strong></div>
+                    <div>Fecha: <strong>{formatDateChip(modalRow.date)}</strong></div>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#999", textAlign: "center" }}>Solo puedes editar tus propias inscripciones.</div>
+                  <button className="btn outline" style={{ width: "100%", padding: "10px", fontSize: 13, color: "#b42318", borderColor: "#f0cccc" }}
+                    onClick={() => { setModalRow(null); onDelete(modalRow.id); }}>
+                    🗑️ Borrar inscripción
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <h2 style={{ textAlign: "center", margin: "0 0 16px", fontSize: 20, color: "var(--text)" }}>
         {getLabel(urlKey) || "Listado de Inscritos"}
@@ -520,61 +588,28 @@ export default function FiestasList() {
                 }}>
                   {/* Cabecera */}
                   <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 58px 34px 34px 76px",
+                    display: "grid", gridTemplateColumns: "1fr 44px 44px",
                     padding: "7px 10px",
                     background: mealInfo?.color || "#3a6ea5",
                     color: "white", fontSize: 11, fontWeight: 700,
                   }}>
                     <span>Usuario</span>
-                    <span style={{ textAlign: "center" }}>Fecha</span>
                     <span style={{ textAlign: "center" }}>Ad.</span>
                     <span style={{ textAlign: "center" }}>Ni.</span>
-                    <span style={{ textAlign: "center" }}>Acciones</span>
                   </div>
 
                   {/* Filas */}
                   {mealRows.map((s, idx) => {
                     const canEdit = isAdmin || (user && s.uid && user.uid === s.uid);
-                    const isEditing = editingId === s.id;
                     return (
-                      <div key={s.id} style={{ borderTop: "1px solid #f0f5e8", background: idx % 2 === 1 ? (mealInfo?.bg || "#fafafa") : "white" }}>
-                        {isEditing ? (
-                          <div style={{ padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: "#fffde7" }}>
-                            <span style={{ fontWeight: 600, flex: "1 1 100%", fontSize: 14 }}>{userName(s)}</span>
-                            {[["almuerzo","Alm."],["comida","Com."],["cena","Cena"]].map(([field, lbl]) => (
-                              <label key={field} style={{ fontSize: 13, display: "flex", gap: 4, alignItems: "center" }}>
-                                <input type="checkbox" checked={!!editData[field]}
-                                  onChange={(e) => setEditData((p) => ({ ...p, [field]: e.target.checked }))} />
-                                {lbl}
-                              </label>
-                            ))}
-                            <input type="number" min="0" value={editData.adults}
-                              onChange={(e) => setEditData((p) => ({ ...p, adults: e.target.value }))}
-                              style={{ width: 52, padding: "4px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }} placeholder="Ad." />
-                            <input type="number" min="0" value={editData.children}
-                              onChange={(e) => setEditData((p) => ({ ...p, children: e.target.value }))}
-                              style={{ width: 52, padding: "4px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13 }} placeholder="Ni." />
-                            <button className="btn small" onClick={() => onSaveEdit(s.id)} disabled={savingEdit}>{savingEdit ? "..." : "Guardar"}</button>
-                            <button className="btn outline small" onClick={() => setEditingId(null)}>Cancelar</button>
-                          </div>
-                        ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 58px 34px 34px 76px", padding: "6px 10px", alignItems: "center" }}>
-                            <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName(s)}</span>
-                            <span style={{ textAlign: "center", fontSize: 11, color: "#666" }}>{formatDateChip(s.date)}</span>
-                            <span style={{ textAlign: "center", fontWeight: 700, color: "#3a6ea5", fontSize: 14 }}>{s.adults || 0}</span>
-                            <span style={{ textAlign: "center", fontWeight: 700, color: "#d63a7a", fontSize: 14 }}>{s.children || 0}</span>
-                            <div style={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "center" }}>
-                              {canEdit && (
-                                <button className="btn small" style={{ padding: "2px 6px", fontSize: 10 }} onClick={() => onEditClick(s)}>Editar</button>
-                              )}
-                              <button className="btn outline small" style={{ padding: "2px 6px", fontSize: 10, color: "#b42318", borderColor: "#f0cccc" }} onClick={() => onDelete(s.id)}>Borrar</button>
-                              <button
-                                onClick={() => alert("🗑️ BORRAR INSCRIPCIÓN\n\nAl pulsar Borrar se te pedirá confirmación dos veces.\n\nSi confirmas, se borrará:\n• La inscripción de esta persona\n• Las cuentas guardadas para este día/evento/comida\n\n⚠️ Esta acción no se puede deshacer.")}
-                                style={{ width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 10, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
-                              >?</button>
-                            </div>
-                          </div>
-                        )}
+                      <div key={s.id}
+                        onClick={() => onEditClick(s)}
+                        style={{ borderTop: "1px solid #f0f5e8", background: idx % 2 === 1 ? (mealInfo?.bg || "#fafafa") : "white", display: "grid", gridTemplateColumns: "1fr 44px 44px 28px", alignItems: "center", padding: "9px 10px", cursor: "pointer" }}
+                      >
+                        <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName(s)}</span>
+                        <span style={{ textAlign: "center", fontWeight: 700, color: "#3a6ea5", fontSize: 14 }}>{s.adults || 0}</span>
+                        <span style={{ textAlign: "center", fontWeight: 700, color: "#d63a7a", fontSize: 14 }}>{s.children || 0}</span>
+                        <span style={{ textAlign: "center", fontSize: 16, color: canEdit ? "var(--accent)" : "#ccc" }}>{canEdit ? "✏️" : "👁"}</span>
                       </div>
                     );
                   })}
