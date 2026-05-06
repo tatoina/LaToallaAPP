@@ -2261,11 +2261,17 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
 .cohete-countdown-card {
   width: 100%;
   background: linear-gradient(135deg, #1a1a2e, #2d2d5e);
-  border-radius: 16px;
-  padding: 10px 8px 10px;
+  border-radius: 12px;
+  padding: 8px 12px;
   margin-bottom: 14px;
   text-align: center;
-  box-shadow: 0 6px 24px rgba(26,26,46,0.30);
+  box-shadow: 0 4px 16px rgba(26,26,46,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .cohete-countdown-label {
@@ -2273,58 +2279,60 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   font-weight: 700;
   color: rgba(255,255,255,0.65);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 8px;
+  letter-spacing: 0.8px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .cohete-countdown-digits {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
+  flex-shrink: 0;
 }
 
 .cohete-digit-block {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(255,255,255,0.08);
-  border-radius: 8px;
-  padding: 5px 7px 4px;
-  min-width: 36px;
+  align-items: baseline;
+  gap: 2px;
+  padding: 3px 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+  min-width: 0;
 }
 
 .cohete-digit {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 900;
   color: white;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 
 .cohete-digit-unit {
   font-size: 9px;
   font-weight: 700;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.55);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 3px;
+  letter-spacing: 0.3px;
 }
 
 .cohete-digit-sep {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 900;
-  color: rgba(255,255,255,0.35);
-  margin-bottom: 8px;
+  color: rgba(255,255,255,0.3);
   line-height: 1;
+  margin: 0 1px;
 }
 
 .cohete-countdown-sub {
-  font-size: 10px;
-  color: rgba(255,255,255,0.55);
-  margin: 8px 0 0;
-  letter-spacing: 0.3px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.5);
+  margin: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── Banner ganador ── */

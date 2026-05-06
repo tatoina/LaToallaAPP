@@ -237,31 +237,29 @@ export default function VotacionCohete() {
       {/* Countdown / Banner ganador */}
       {!votingClosed ? (
         <div className="cohete-countdown-card">
-          <p className="cohete-countdown-label">⏳ Votación cierra en</p>
+          <p className="cohete-countdown-label">⏳ Cierra en</p>
           <div className="cohete-countdown-digits">
             <div className="cohete-digit-block">
               <span className="cohete-digit">{days}</span>
-              <span className="cohete-digit-unit">días</span>
+              <span className="cohete-digit-unit">d</span>
             </div>
             <span className="cohete-digit-sep">:</span>
             <div className="cohete-digit-block">
               <span className="cohete-digit">{pad(hours)}</span>
-              <span className="cohete-digit-unit">horas</span>
+              <span className="cohete-digit-unit">h</span>
             </div>
             <span className="cohete-digit-sep">:</span>
             <div className="cohete-digit-block">
               <span className="cohete-digit">{pad(minutes)}</span>
-              <span className="cohete-digit-unit">min</span>
+              <span className="cohete-digit-unit">m</span>
             </div>
             <span className="cohete-digit-sep">:</span>
             <div className="cohete-digit-block">
               <span className="cohete-digit">{pad(seconds)}</span>
-              <span className="cohete-digit-unit">seg</span>
+              <span className="cohete-digit-unit">s</span>
             </div>
           </div>
-          <p className="cohete-countdown-sub">
-            🎆 Lanzamiento: 24 de julio de {year} a las 11:00h
-          </p>
+          <p className="cohete-countdown-sub">🎆 25 jul {year}</p>
         </div>
       ) : (
         <div className="cohete-winner-card">
