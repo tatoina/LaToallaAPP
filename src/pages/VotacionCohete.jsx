@@ -259,7 +259,7 @@ export default function VotacionCohete() {
               <span className="cohete-digit-unit">s</span>
             </div>
           </div>
-          <p className="cohete-countdown-sub">🎆 25 jul {year}</p>
+          <p className="cohete-countdown-sub">🎆 Lanzamiento: 25 jul · 11:00h</p>
         </div>
       ) : (
         <div className="cohete-winner-card">
