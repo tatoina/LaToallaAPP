@@ -627,22 +627,22 @@ export default function FiestasList() {
                     </div>
                   </div>
 
-                  <div style={{ padding: "10px", borderTop: "1px solid #e7eedb", background: "#fbfdf7", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8, padding: "0 4px" }}>
                     <button
                       className="btn"
-                      style={{ width: "100%", fontSize: 13, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                      style={{ width: "100%", fontSize: 12, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0.85 }}
                       onClick={() => setShowSettlement((prev) => !prev)}
                     >
-                      <span>{showSettlement ? "▲ Cerrar ajuste de cuentas" : "🧾 AJUSTE DE CUENTAS"}</span>
+                      <span>{showSettlement ? "▲ Cerrar ajuste de cuentas" : "🧾 Ajuste de cuentas"}</span>
                       {!showSettlement && (cuentaData.tickets || []).length > 0 && (
-                        <span style={{ background: "#2f6b1b", color: "white", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 800 }}>✓ Guardado</span>
+                        <span style={{ background: "#2f6b1b", color: "white", borderRadius: 10, padding: "1px 8px", fontSize: 10, fontWeight: 800 }}>✓ Guardado</span>
                       )}
                     </button>
 
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <button
                         className="btn outline"
-                        style={{ flex: 1, fontSize: 13, padding: "9px 12px", color: "#b42318", borderColor: "#f0cccc", background: "#fff5f5" }}
+                        style={{ flex: 1, fontSize: 11, padding: "7px 10px", color: "#b42318", borderColor: "#f0cccc", background: "#fff5f5", opacity: 0.85 }}
                         onClick={async () => {
                           const first = window.confirm(
                             `¿Borrar TODAS las inscripciones de ${mealInfo?.label || "esta comida"} del día ${selDate}?\n\nTambién se borrarán las cuentas guardadas si las hay.`
@@ -658,11 +658,11 @@ export default function FiestasList() {
                           } catch (err) { console.error(err); alert("Error al borrar."); }
                         }}
                       >
-                        🗑️ BORRADO DE INSCRIPCIONES
+                        🗑️ Borrado de inscripciones
                       </button>
                       <button
                         onClick={() => alert("🗑️ BORRADO DE INSCRIPCIONES\n\nBorra TODAS las inscripciones del día y comida seleccionados.\n\nTambién borra las cuentas guardadas (tickets, precios, etc.).\n\n⚠️ Se pedirá confirmación dos veces. No se puede deshacer.")}
-                        style={{ width: 22, height: 22, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
+                        style={{ width: 20, height: 20, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
                       >?</button>
                     </div>
 
