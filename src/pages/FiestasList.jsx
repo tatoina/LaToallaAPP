@@ -300,9 +300,20 @@ export default function FiestasList() {
   };
 
   const onDelete = async (id) => {
-    if (!window.confirm("Borrar esta inscripcion?")) return;
-    try { await deleteDoc(doc(db, "fiestas_signups", id)); }
-    catch (err) { console.error(err); alert("No se pudo borrar."); }
+    const first = window.confirm(
+      "\u00bfEstás seguro de borrar esta inscripción?\nSi hay cuentas guardadas para este día/evento/comida también se borrarán."
+    );
+    if (!first) return;
+    const second = window.confirm(
+      "⚠️ ¿Seguro? Esta acción no se puede deshacer. Se borrará la inscripción y las cuentas guardadas."
+    );
+    if (!second) return;
+    try {
+      await deleteDoc(doc(db, "fiestas_signups", id));
+      if (cuentaDocId) {
+        await deleteDoc(doc(db, "fiestas_cuentas", cuentaDocId));
+      }
+    } catch (err) { console.error(err); alert("No se pudo borrar."); }
   };
 
   const saveCuenta = async (nextData) => {
@@ -554,11 +565,9 @@ export default function FiestasList() {
                             <span style={{ textAlign: "center", fontWeight: 700, color: "#d63a7a", fontSize: 14 }}>{s.children || 0}</span>
                             <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
                               {canEdit && (
-                                <>
-                                  <button className="btn small" style={{ padding: "2px 6px", fontSize: 10 }} onClick={() => onEditClick(s)}>Editar</button>
-                                  <button className="btn outline small" style={{ padding: "2px 6px", fontSize: 10 }} onClick={() => onDelete(s.id)}>Borrar</button>
-                                </>
+                                <button className="btn small" style={{ padding: "2px 6px", fontSize: 10 }} onClick={() => onEditClick(s)}>Editar</button>
                               )}
+                              <button className="btn outline small" style={{ padding: "2px 6px", fontSize: 10, color: "#b42318", borderColor: "#f0cccc" }} onClick={() => onDelete(s.id)}>Borrar</button>
                             </div>
                           </div>
                         )}
