@@ -179,14 +179,18 @@ export default function FiestasList() {
       if (!snap.exists()) {
         setCuentaData({ childPrice: "", tickets: [] });
         setTicketForm({ paidById: "", amount: "" });
+        setShowSettlement(false);
         return;
       }
       const data = snap.data() || {};
+      const tickets = Array.isArray(data.tickets) ? data.tickets : [];
       setCuentaData({
         childPrice: data.childPrice ?? "",
-        tickets: Array.isArray(data.tickets) ? data.tickets : [],
+        tickets,
       });
       setTicketForm({ paidById: "", amount: "" });
+      // Auto-abrir si ya hay cuentas guardadas
+      if (tickets.length > 0 || data.childPrice) setShowSettlement(true);
     });
     return () => unsub();
   }, [cuentaDocId]);
@@ -560,10 +564,13 @@ export default function FiestasList() {
                   <div style={{ padding: "10px", borderTop: "1px solid #e7eedb", background: "#fbfdf7" }}>
                     <button
                       className="btn"
-                      style={{ width: "100%", fontSize: 13, padding: "10px 12px" }}
+                      style={{ width: "100%", fontSize: 13, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                       onClick={() => setShowSettlement((prev) => !prev)}
                     >
-                      {showSettlement ? "Cerrar ajuste de cuentas" : "AJUSTE DE CUENTAS"}
+                      <span>{showSettlement ? "▲ Cerrar ajuste de cuentas" : "🧾 AJUSTE DE CUENTAS"}</span>
+                      {!showSettlement && (cuentaData.tickets || []).length > 0 && (
+                        <span style={{ background: "#2f6b1b", color: "white", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 800 }}>✓ Guardado</span>
+                      )}
                     </button>
 
                     {showSettlement && (
@@ -667,6 +674,40 @@ export default function FiestasList() {
                               </div>
                             )}
                           </div>
+
+                          {(cuentaData.tickets || []).length > 0 && (
+                            <button
+                              className="btn accent"
+                              style={{ width: "100%", fontSize: 14, padding: "12px", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                              onClick={() => {
+                                const evento = getLabel(selEvent);
+                                const comida = mealInfo?.label || "";
+                                const fecha = formatDateChip(selDate);
+                                let txt = `🧾 AJUSTE DE CUENTAS\n${evento} · ${comida} · ${fecha}\n`;
+                                txt += `${"-".repeat(32)}\n`;
+                                txt += `Total evento: ${money(ticketTotal)}\n`;
+                                txt += `Precio por niño: ${money(childPrice)}\n`;
+                                txt += `Sale por adulto: ${money(adultShare)}\n`;
+                                if (payerSummary.length > 0) {
+                                  txt += `${"-".repeat(32)}\n`;
+                                  payerSummary.forEach((p) => {
+                                    if (p.balance >= 0) {
+                                      txt += `✅ ${p.name} → RECIBE ${money(p.balance)}\n`;
+                                    } else {
+                                      txt += `💸 ${p.name} → DEBE pagar ${money(Math.abs(p.balance))}\n`;
+                                    }
+                                  });
+                                }
+                                if (navigator.share) {
+                                  navigator.share({ title: "Ajuste de cuentas", text: txt }).catch(() => {});
+                                } else {
+                                  navigator.clipboard.writeText(txt).then(() => alert("Resumen copiado al portapapeles")).catch(() => alert(txt));
+                                }
+                              }}
+                            >
+                              📤 Compartir resumen
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
