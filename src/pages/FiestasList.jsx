@@ -595,7 +595,7 @@ export default function FiestasList() {
                     </div>
                   </div>
 
-                  <div style={{ padding: "10px", borderTop: "1px solid #e7eedb", background: "#fbfdf7" }}>
+                  <div style={{ padding: "10px", borderTop: "1px solid #e7eedb", background: "#fbfdf7", display: "flex", flexDirection: "column", gap: 8 }}>
                     <button
                       className="btn"
                       style={{ width: "100%", fontSize: 13, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
@@ -606,6 +606,33 @@ export default function FiestasList() {
                         <span style={{ background: "#2f6b1b", color: "white", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 800 }}>✓ Guardado</span>
                       )}
                     </button>
+
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <button
+                        className="btn outline"
+                        style={{ flex: 1, fontSize: 13, padding: "9px 12px", color: "#b42318", borderColor: "#f0cccc", background: "#fff5f5" }}
+                        onClick={async () => {
+                          const first = window.confirm(
+                            `¿Borrar TODAS las inscripciones de ${mealInfo?.label || "esta comida"} del día ${selDate}?\n\nTambién se borrarán las cuentas guardadas si las hay.`
+                          );
+                          if (!first) return;
+                          const second = window.confirm(
+                            `⚠️ ¿Seguro? Se borrarán ${mealRows.length} inscripciones. Esta acción no se puede deshacer.`
+                          );
+                          if (!second) return;
+                          try {
+                            await Promise.all(mealRows.map((r) => deleteDoc(doc(db, "fiestas_signups", r.id))));
+                            if (cuentaDocId) await deleteDoc(doc(db, "fiestas_cuentas", cuentaDocId));
+                          } catch (err) { console.error(err); alert("Error al borrar."); }
+                        }}
+                      >
+                        🗑️ BORRADO DE INSCRIPCIONES
+                      </button>
+                      <button
+                        onClick={() => alert("🗑️ BORRADO DE INSCRIPCIONES\n\nBorra TODAS las inscripciones del día y comida seleccionados.\n\nTambién borra las cuentas guardadas (tickets, precios, etc.).\n\n⚠️ Se pedirá confirmación dos veces. No se puede deshacer.")}
+                        style={{ width: 22, height: 22, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
+                      >?</button>
+                    </div>
 
                     {showSettlement && (
                       <div style={{ marginTop: 10, border: "1px solid #d8e6c2", borderRadius: 12, background: "white", padding: 12 }}>
