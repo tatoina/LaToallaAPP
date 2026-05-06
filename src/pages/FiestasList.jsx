@@ -563,11 +563,15 @@ export default function FiestasList() {
                             <span style={{ textAlign: "center", fontSize: 11, color: "#666" }}>{formatDateChip(s.date)}</span>
                             <span style={{ textAlign: "center", fontWeight: 700, color: "#3a6ea5", fontSize: 14 }}>{s.adults || 0}</span>
                             <span style={{ textAlign: "center", fontWeight: 700, color: "#d63a7a", fontSize: 14 }}>{s.children || 0}</span>
-                            <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
+                            <div style={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "center" }}>
                               {canEdit && (
                                 <button className="btn small" style={{ padding: "2px 6px", fontSize: 10 }} onClick={() => onEditClick(s)}>Editar</button>
                               )}
                               <button className="btn outline small" style={{ padding: "2px 6px", fontSize: 10, color: "#b42318", borderColor: "#f0cccc" }} onClick={() => onDelete(s.id)}>Borrar</button>
+                              <button
+                                onClick={() => alert("🗑️ BORRAR INSCRIPCIÓN\n\nAl pulsar Borrar se te pedirá confirmación dos veces.\n\nSi confirmas, se borrará:\n• La inscripción de esta persona\n• Las cuentas guardadas para este día/evento/comida\n\n⚠️ Esta acción no se puede deshacer.")}
+                                style={{ width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #aaa", background: "#f5f5f5", color: "#666", fontSize: 10, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
+                              >?</button>
                             </div>
                           </div>
                         )}
