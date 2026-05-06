@@ -721,49 +721,7 @@ export default function FiestasList() {
                             </div>
                           )}
 
-                          {(cuentaData.tickets || []).length > 0 && (
-                            <button
-                              className="btn accent"
-                              style={{ width: "100%", fontSize: 14, padding: "12px", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-                              onClick={() => {
-                                const evento = getLabel(selEvent);
-                                const comida = mealInfo?.label || "";
-                                const fecha = formatDateChip(selDate);
-                                let txt = `🧾 AJUSTE DE CUENTAS\n${evento} · ${comida} · ${fecha}\n`;
-                                txt += `${"-".repeat(32)}\n`;
-                                txt += `Total evento: ${money(ticketTotal)}\n`;
-                                txt += `Precio por niño: ${money(childPrice)}\n`;
-                                txt += `Sale por adulto: ${money(adultShare)}\n`;
-                                if (payerSummary.length > 0) {
-                                  txt += `${"-".repeat(32)}\n`;
-                                  txt += `BALANCE:\n`;
-                                  payerSummary.forEach((p) => {
-                                    if (p.balance > 0.005) {
-                                      txt += `✅ ${p.name} recibe ${money(p.balance)}\n`;
-                                    } else if (p.balance < -0.005) {
-                                      txt += `❌ ${p.name} debe ${money(Math.abs(p.balance))}\n`;
-                                    } else {
-                                      txt += `✓ ${p.name} en paz\n`;
-                                    }
-                                  });
-                                }
-                                if (transferList.length > 0) {
-                                  txt += `${"--".repeat(16)}\n`;
-                                  txt += `TRANSFERENCIAS:\n`;
-                                  transferList.forEach((t) => {
-                                    txt += `💸 ${t.from} → ${t.to}: ${money(t.amount)}\n`;
-                                  });
-                                }
-                                if (navigator.share) {
-                                  navigator.share({ title: "Ajuste de cuentas", text: txt }).catch(() => {});
-                                } else {
-                                  navigator.clipboard.writeText(txt).then(() => alert("Resumen copiado al portapapeles")).catch(() => alert(txt));
-                                }
-                              }}
-                            >
-                              📤 Compartir resumen
-                            </button>
-                          )}
+
                         </div>
                       </div>
                     )}
