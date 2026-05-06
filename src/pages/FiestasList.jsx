@@ -589,7 +589,15 @@ export default function FiestasList() {
                     background: mealInfo?.color || "#3a6ea5",
                     color: "white", fontSize: 11, fontWeight: 700,
                   }}>
-                    <span>Usuario</span>
+                    <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <span>Usuario</span>
+                      {selDate && mealInfo && (
+                        <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85 }}>
+                          {(() => { const [, m, d] = selDate.split("-"); return `${parseInt(d)}/${parseInt(m)}`; })()}
+                          {" · "}{mealInfo.label}
+                        </span>
+                      )}
+                    </span>
                     <span style={{ textAlign: "center" }}>Ad.</span>
                     <span style={{ textAlign: "center" }}>Ni.</span>
                     <span></span>
