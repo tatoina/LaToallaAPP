@@ -253,6 +253,14 @@ export default function EventosTemporales() {
             </div>
           </details>
         )}
+
+        <button
+          className="btn"
+          style={{ width: "100%", marginTop: 10, fontSize: 13, padding: "9px 12px", background: "#f0f6e8", color: "#2f6b1b", border: "1.5px solid #c8dda8", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}
+          onClick={() => navigate(`/fiestas/list/evento_${ev.id}`)}
+        >
+          🧾 Listado completo y ajuste de cuentas
+        </button>
       </div>
     );
   };
