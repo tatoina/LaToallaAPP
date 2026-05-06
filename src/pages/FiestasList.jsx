@@ -66,6 +66,7 @@ export default function FiestasList() {
   const [cuentaData, setCuentaData] = useState({ childPrice: "", tickets: [] });
   const [ticketForm, setTicketForm] = useState({ paidById: "", amount: "" });
   const [savingCuenta, setSavingCuenta] = useState(false);
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "fiestas_signups"), orderBy("date", "asc"));
@@ -779,6 +780,43 @@ export default function FiestasList() {
         </>
       )}
 
+      {/* ─── MODAL AVISO BORRADO ─── */}
+      {showDeleteWarning && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}
+          onClick={() => setShowDeleteWarning(false)}
+        >
+          <div style={{ background: "white", borderRadius: 18, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 28, textAlign: "center", marginBottom: 8 }}>🗑️</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#b42318", textAlign: "center", marginBottom: 12 }}>Borrado de inscripciones</div>
+            <div style={{ fontSize: 13, color: "#444", lineHeight: 1.6, marginBottom: 16 }}>
+              Esta acción borrará <strong>todas las inscripciones</strong> del día y comida seleccionados (<em>{mealInfo?.label} · {selDate}</em>).
+              <br /><br />
+              También se borrarán las <strong>cuentas guardadas</strong> (tickets, precios, etc.) si las hay.
+              <br /><br />
+              <span style={{ color: "#b42318", fontWeight: 700 }}>⚠️ Esta acción no se puede deshacer.</span>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="nav-bottom-btn" style={{ flex: 1 }} onClick={() => setShowDeleteWarning(false)}>Cancelar</button>
+              <button
+                className="nav-bottom-btn"
+                style={{ flex: 1, color: "#b42318", fontWeight: 800 }}
+                onClick={async () => {
+                  setShowDeleteWarning(false);
+                  const sure = window.confirm(`⚠️ ¿Seguro? Se borrarán ${mealRows.length} inscripciones. No se puede deshacer.`);
+                  if (!sure) return;
+                  try {
+                    await Promise.all(mealRows.map((r) => deleteDoc(doc(db, "fiestas_signups", r.id))));
+                    if (cuentaDocId) await deleteDoc(doc(db, "fiestas_cuentas", cuentaDocId));
+                  } catch (err) { console.error(err); alert("Error al borrar."); }
+                }}
+              >Entendido, borrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── BOTONES AJUSTE Y BORRADO ─── */}
       {mealRows.length > 0 && (
         <div className="page-bottom-nav" style={{ marginTop: 14 }}>
@@ -795,28 +833,10 @@ export default function FiestasList() {
           <button
             className="nav-bottom-btn"
             style={{ color: "#b42318" }}
-            onClick={async () => {
-              const first = window.confirm(
-                `¿Borrar TODAS las inscripciones de ${mealInfo?.label || "esta comida"} del día ${selDate}?\n\nTambién se borrarán las cuentas guardadas si las hay.`
-              );
-              if (!first) return;
-              const second = window.confirm(
-                `⚠️ ¿Seguro? Se borrarán ${mealRows.length} inscripciones. Esta acción no se puede deshacer.`
-              );
-              if (!second) return;
-              try {
-                await Promise.all(mealRows.map((r) => deleteDoc(doc(db, "fiestas_signups", r.id))));
-                if (cuentaDocId) await deleteDoc(doc(db, "fiestas_cuentas", cuentaDocId));
-              } catch (err) { console.error(err); alert("Error al borrar."); }
-            }}
+            onClick={() => setShowDeleteWarning(true)}
           >
             🗑️ Borrar inscripciones
           </button>
-          <button
-            className="nav-bottom-btn"
-            style={{ flex: "0 0 44px", minWidth: "unset", padding: 0, fontSize: 13, fontWeight: 800, color: "#666" }}
-            onClick={() => alert("🗑️ BORRADO DE INSCRIPCIONES\n\nBorra TODAS las inscripciones del día y comida seleccionados.\n\nTambién borra las cuentas guardadas (tickets, precios, etc.).\n\n⚠️ Se pedirá confirmación dos veces. No se puede deshacer.")}
-          >?</button>
         </div>
       )}
 
