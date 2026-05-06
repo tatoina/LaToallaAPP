@@ -456,10 +456,6 @@ export default function FiestasList() {
                     <div>Fecha: <strong>{formatDateChip(modalRow.date)}</strong></div>
                   </div>
                   <div style={{ fontSize: 12, color: "#999", textAlign: "center" }}>Solo puedes editar tus propias inscripciones.</div>
-                  <button className="btn outline" style={{ width: "100%", padding: "10px", fontSize: 13, color: "#b42318", borderColor: "#f0cccc" }}
-                    onClick={() => { setModalRow(null); onDelete(modalRow.id); }}>
-                    🗑️ Borrar inscripción
-                  </button>
                 </div>
               )}
             </div>
@@ -588,7 +584,7 @@ export default function FiestasList() {
                 }}>
                   {/* Cabecera */}
                   <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 44px 44px",
+                    display: "grid", gridTemplateColumns: "1fr 44px 44px 28px",
                     padding: "7px 10px",
                     background: mealInfo?.color || "#3a6ea5",
                     color: "white", fontSize: 11, fontWeight: 700,
@@ -596,6 +592,7 @@ export default function FiestasList() {
                     <span>Usuario</span>
                     <span style={{ textAlign: "center" }}>Ad.</span>
                     <span style={{ textAlign: "center" }}>Ni.</span>
+                    <span></span>
                   </div>
 
                   {/* Filas */}
