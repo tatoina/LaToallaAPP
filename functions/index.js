@@ -589,3 +589,40 @@ exports.deleteUserAccount = https.onCall(async (data, context) => {
   console.log(`Usuario ${uid} eliminado por admin ${context.auth.uid}`);
   return { success: true };
 });
+
+// ─── 9. NOTIFICACIÓN DE SUGERENCIA AL ADMIN ───────────────────────────────────
+exports.onNewSugerencia = firestoreFn
+  .document("sugerencias/{sugerenciaId}")
+  .onCreate(async (snap) => {
+    const data = snap.data();
+    if (!data) return null;
+
+    const texto = data.texto || "";
+    const email = data.email || "Anónimo";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <h1 style="color:white;margin:0;font-size:20px">✉️ Nueva sugerencia</h1>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+          <p style="font-size:14px;color:#555;margin:0 0 8px">
+            <strong>De:</strong> ${email}
+          </p>
+          <div style="background:#fff;border:1.5px solid #e0edcc;border-radius:8px;padding:14px;font-size:15px;color:#243123;line-height:1.6;white-space:pre-wrap">
+            ${texto}
+          </div>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    try {
+      await sendMail("inaviciba@gmail.com", `✉️ Nueva sugerencia de ${email}`, html);
+      console.log(`Sugerencia de ${email} enviada al admin.`);
+    } catch (err) {
+      console.error("Error enviando sugerencia al admin:", err.message);
+    }
+
+    return null;
+  });
