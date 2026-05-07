@@ -24,7 +24,7 @@ const EVENT_LABELS = {
   ferias:   "🎡 Ferias",
 };
 
-const TABS = ["Usuarios", "Inscripciones", "Noticias"];
+const TABS = ["Usuarios", "Inscripciones", "Noticias", "Sugerencias"];
 const NOTICIA_CATEGORIES = ["General", "Fiestas Juventud", "Fiestas Santiago", "Ferias", "Eventos"];
 
 export default function AdminPanel() {
@@ -160,7 +160,22 @@ export default function AdminPanel() {
     try { await deleteDoc(doc(db, "noticias", id)); }
     catch (e) { alert("Error: " + e.message); }
   };
+  // ── SUGERENCIAS ───────────────────────────────────────────────────────────────────
+  const [sugerencias, setSugerencias] = useState([]);
 
+  useEffect(() => {
+    const q = query(collection(db, "sugerencias"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setSugerencias(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  const onDeleteSugerencia = async (id) => {
+    if (!window.confirm("¿Borrar esta sugerencia?")) return;
+    try { await deleteDoc(doc(db, "sugerencias", id)); }
+    catch (e) { alert("Error: " + e.message); }
+  };
   // ── INSCRIPCIONES ─────────────────────────────────────────
   const [signups, setSignups] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -265,7 +280,7 @@ export default function AdminPanel() {
             className={`admin-tab${activeTab === t ? " active" : ""}`}
             onClick={() => setActiveTab(t)}
           >
-            {t === "Usuarios" ? "👥 Usuarios" : t === "Inscripciones" ? "📋 Inscripciones" : "📢 Noticias"}
+            {t === "Usuarios" ? "👥 Usuarios" : t === "Inscripciones" ? "📋 Inscripciones" : t === "Noticias" ? "📢 Noticias" : "✉️ Sugerencias"}
           </button>
         ))}
       </div>
@@ -538,6 +553,30 @@ export default function AdminPanel() {
                 </button>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* ── PESTAÑA SUGERENCIAS ── */}
+      {activeTab === "Sugerencias" && (
+        <div className="admin-section">
+          {sugerencias.length === 0 ? (
+            <p style={{ color: "#999", textAlign: "center" }}>No hay sugerencias todavía.</p>
+          ) : (
+            sugerencias.map((s) => {
+              const fecha = s.createdAt?.toDate
+                ? s.createdAt.toDate().toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })
+                : "";
+              return (
+                <div key={s.id} style={{ background: "#fff", borderRadius: 8, padding: "10px 12px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>{s.texto}</div>
+                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>{s.email || "Anónimo"}{fecha ? ` · ${fecha}` : ""}</div>
+                  </div>
+                  <button className="btn danger small" onClick={() => onDeleteSugerencia(s.id)} style={{ flexShrink: 0 }}>🗑️</button>
+                </div>
+              );
+            })
           )}
         </div>
       )}

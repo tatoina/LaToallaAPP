@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebase";
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import logo from "../assets/logo.png";
 import inaLogo from "../assets/INASYSTEM.png";
 
@@ -23,6 +23,9 @@ export default function Dashboard() {
   const [inaExpanded, setInaExpanded] = useState(false);
   const [latestNoticia, setLatestNoticia] = useState(null);
   const [noticiaVisible, setNoticiaVisible] = useState(false);
+  const [showSugerencia, setShowSugerencia] = useState(false);
+  const [sugerenciaText, setSugerenciaText] = useState("");
+  const [sugerenciaMsg, setSugerenciaMsg] = useState("");
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -46,6 +49,22 @@ export default function Dashboard() {
   }, []);
 
   const dateStr = now.toLocaleDateString("es-ES", { weekday: "long", day: "2-digit", month: "long" });
+
+  const onSendSugerencia = async () => {
+    if (!sugerenciaText.trim()) return;
+    try {
+      await addDoc(collection(db, "sugerencias"), {
+        texto: sugerenciaText.trim(),
+        email: user?.email || "",
+        createdAt: serverTimestamp(),
+      });
+      setSugerenciaMsg("✅ ¡Sugerencia enviada! Gracias.");
+      setSugerenciaText("");
+      setTimeout(() => { setSugerenciaMsg(""); setShowSugerencia(false); }, 2500);
+    } catch {
+      setSugerenciaMsg("❌ Error al enviar. Inténtalo de nuevo.");
+    }
+  };
 
   return (
     <div className="dash-page">
@@ -71,7 +90,17 @@ export default function Dashboard() {
           style={{ cursor: "pointer" }}
         />
         <div>
-          <div className="dash-header-title">LA TOALLA</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="dash-header-title">LA TOALLA</div>
+            <button
+              className="dash-suggest-btn"
+              onClick={() => { setShowSugerencia(true); setSugerenciaMsg(""); }}
+              title="Enviar sugerencia"
+              aria-label="Enviar sugerencia"
+            >
+              ✉️
+            </button>
+          </div>
           <div className="dash-header-sub dash-header-date">{dateStr}</div>
           {user?.email && (
             <div className="dash-header-email">{user.email}</div>
@@ -178,6 +207,46 @@ export default function Dashboard() {
         />
       </div>
       <audio ref={audioRef} src="/sonmisamigas.m4a" preload="auto" />
+
+      {/* Modal sugerencias */}
+      {showSugerencia && (
+        <div
+          className="suggest-overlay"
+          onClick={() => setShowSugerencia(false)}
+        >
+          <div
+            className="suggest-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="suggest-modal-header">
+              <span>✉️ Enviar sugerencia</span>
+              <button className="suggest-close" onClick={() => setShowSugerencia(false)}>×</button>
+            </div>
+            <p className="suggest-hint">¿Tienes alguna idea o mejora para la app? ¡Cuéntanosla!</p>
+            <textarea
+              className="suggest-textarea"
+              placeholder="Escribe tu sugerencia aquí..."
+              value={sugerenciaText}
+              onChange={(e) => setSugerenciaText(e.target.value)}
+              rows={4}
+              autoFocus
+            />
+            {sugerenciaMsg && (
+              <p style={{ fontSize: 13, color: sugerenciaMsg.startsWith("✅") ? "green" : "red", margin: "4px 0 0" }}>
+                {sugerenciaMsg}
+              </p>
+            )}
+            <button
+              className="btn"
+              style={{ marginTop: 12, width: "100%" }}
+              onClick={onSendSugerencia}
+              disabled={!sugerenciaText.trim()}
+            >
+              Enviar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
