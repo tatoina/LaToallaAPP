@@ -115,6 +115,7 @@ exports.onNewEvento = firestoreFn
         <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
           <h2 style="color:#243123;margin:0 0 8px">${evento.nombre}</h2>
           <p style="color:#6A8F3A;font-weight:bold;margin:0 0 12px">📆 ${dateStr}</p>
+          ${evento.createdByName ? `<p style="color:#555;margin:0 0 12px">👤 Creado por: <strong>${evento.createdByName}</strong></p>` : ""}
           ${evento.descripcion ? `<p style="color:#555">${evento.descripcion}</p>` : ""}
           <p>¡Entra en la app para apuntarte!</p>
           <a href="https://latoallaapp-daf6c.web.app"

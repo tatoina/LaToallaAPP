@@ -774,10 +774,20 @@ h2 {
 .admin-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.admin-user-card,
+.admin-user-card {
+  background: white;
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .admin-signup-card {
   background: white;
   border-radius: 12px;
@@ -799,8 +809,8 @@ h2 {
 }
 
 .admin-user-name {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -808,11 +818,26 @@ h2 {
 }
 
 .admin-user-email {
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.admin-users-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.admin-users-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .admin-user-actions {
@@ -1496,6 +1521,11 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   font-size: 17px;
   font-weight: 800;
   color: var(--text);
+}
+.ev2-card-creator {
+  font-size: 12px;
+  color: #777;
+  margin-top: 2px;
 }
 .ev2-card-desc {
   font-size: 13px;

@@ -95,7 +95,7 @@ function MultiDateCalendar({ selected, onChange, defaultMonth }) {
 }
 
 export default function EventSignupForm({ eventType, title, defaultMonth, singleDay, fixedDate, dateInfoText, configKey }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [editingDay, setEditingDay] = useState(!fixedDate);
@@ -474,7 +474,7 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
 
           <div className="page-bottom-nav" style={{ marginTop: 12 }}>
             <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
-            <button className="nav-bottom-btn accent" onClick={() => navigate("/fiestas/list")}>📋 Ver listado</button>
+            <button className="nav-bottom-btn accent" onClick={() => navigate(`/fiestas/list/${eventType}`)}>📋 Ver listado</button>
           </div>
         </form>
       </div>
@@ -506,7 +506,7 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
               <button className="btn small" onClick={() => { setShowPopup(false); resetForm(); }}>Cerrar</button>
-              <button className="btn outline small" onClick={() => { setShowPopup(false); navigate("/fiestas/list"); }}>Ir al listado</button>
+              <button className="btn outline small" onClick={() => { setShowPopup(false); navigate(`/fiestas/list/${eventType}`); }}>Ir al listado</button>
             </div>
           </div>
         </div>

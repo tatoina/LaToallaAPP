@@ -35,6 +35,7 @@ export default function AdminPanel() {
   // ── USUARIOS ──────────────────────────────────────────────
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [userSearch, setUserSearch] = useState("");
   const [editingUser, setEditingUser] = useState(null);
   const [editUserData, setEditUserData] = useState({});
   const [savingUser, setSavingUser] = useState(false);
@@ -103,6 +104,16 @@ export default function AdminPanel() {
   };
 
   const userName = (u) => u.name || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || u.id;
+
+  const filteredUsers = users.filter((u) => {
+    if (!userSearch.trim()) return true;
+    const q = userSearch.toLowerCase();
+    return (
+      userName(u).toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.alias || "").toLowerCase().includes(q)
+    );
+  });
 
   // ── NOTICIAS ──────────────────────────────────────────────
   const [noticias, setNoticias] = useState([]);
@@ -262,12 +273,28 @@ export default function AdminPanel() {
       {/* ── PESTAÑA USUARIOS ── */}
       {activeTab === "Usuarios" && (
         <div className="admin-section">
+          {/* Barra de búsqueda + contador */}
+          <div className="admin-users-toolbar">
+            <input
+              className="admin-input"
+              placeholder="🔍 Buscar por nombre, email o alias..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              style={{ flex: 1, margin: 0 }}
+            />
+            <span className="admin-users-count">
+              {filteredUsers.length} / {users.length} usuarios
+            </span>
+          </div>
+
           {loadingUsers ? (
             <div className="centered">Cargando...</div>
-          ) : users.length === 0 ? (
-            <p style={{ color: "#999", textAlign: "center" }}>No hay usuarios registrados.</p>
+          ) : filteredUsers.length === 0 ? (
+            <p style={{ color: "#999", textAlign: "center" }}>
+              {users.length === 0 ? "No hay usuarios registrados." : "No hay resultados para esa búsqueda."}
+            </p>
           ) : (
-            users.map((u) => (
+            filteredUsers.map((u) => (
               <div key={u.id} className="admin-user-card">
                 {editingUser === u.id ? (
                   <div className="admin-user-edit">

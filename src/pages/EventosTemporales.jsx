@@ -95,11 +95,22 @@ export default function EventosTemporales() {
     if (!newEvento.nombre.trim() || !newEvento.fecha) return;
     setCreating(true);
     try {
+      let createdByName = null;
+      if (user?.uid) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const d = userDoc.data();
+            createdByName = d.alias || d.name || `${d.firstName || ""} ${d.lastName || ""}`.trim() || null;
+          }
+        } catch {}
+      }
       await addDoc(collection(db, "eventos"), {
         nombre: newEvento.nombre.trim(),
         fecha: newEvento.fecha,
         descripcion: newEvento.descripcion.trim(),
         createdBy: user?.uid || null,
+        createdByName: createdByName || user?.email?.split("@")[0] || null,
         createdAt: serverTimestamp(),
       });
       setNewEvento({ nombre: "", fecha: "", descripcion: "" });
@@ -167,6 +178,7 @@ export default function EventosTemporales() {
           <div className="ev2-card-meta">
             <div className="ev2-card-date">{formatDate(ev.fecha)}</div>
             <div className="ev2-card-name">{ev.nombre}</div>
+            {ev.createdByName && <div className="ev2-card-creator">👤 Creado por: <strong>{ev.createdByName}</strong></div>}
             {ev.descripcion && <div className="ev2-card-desc">{ev.descripcion}</div>}
           </div>
           <div className="ev2-card-badges">
