@@ -27,7 +27,12 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
     e.preventDefault();
     setMsg("");
     setError("");
-    if (!alias.trim()) { setError("El alias es obligatorio."); return; }
+    if (!firstName.trim())  { setError("El nombre es obligatorio."); return; }
+    if (!lastName.trim())   { setError("Los apellidos son obligatorios."); return; }
+    if (!alias.trim())      { setError("El alias es obligatorio."); return; }
+    if (!telefono.trim())   { setError("El teléfono es obligatorio."); return; }
+    if (!fechaNac)          { setError("La fecha de nacimiento es obligatoria."); return; }
+    if (!email.trim())      { setError("El email es obligatorio."); return; }
     if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
 
     setLoading(true);
@@ -69,11 +74,11 @@ export default function RegisterForm({ onRegistered = () => {}, onCancel = () =>
       </div>
       <input type="text" placeholder="Alias (aparece en listados) *" value={alias}
         onChange={(e) => setAlias(e.target.value)} required />
-      <input type="tel" placeholder="Teléfono" value={telefono}
-        onChange={(e) => setTelefono(e.target.value)} />
+      <input type="tel" placeholder="Teléfono *" value={telefono}
+        onChange={(e) => setTelefono(e.target.value)} required />
       <label className="register-date-label">
-        <span>Fecha de nacimiento</span>
-        <input type="date" value={fechaNac} onChange={(e) => setFechaNac(e.target.value)} />
+        <span>Fecha de nacimiento *</span>
+        <input type="date" value={fechaNac} onChange={(e) => setFechaNac(e.target.value)} required />
       </label>
       <input type="email" placeholder="Email *" value={email}
         onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
