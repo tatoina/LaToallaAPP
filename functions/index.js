@@ -626,3 +626,109 @@ exports.onNewSugerencia = firestoreFn
 
     return null;
   });
+
+// ─── 10. NOTIFICACIÓN DE NUEVA INSCRIPCIÓN ────────────────────────────────────
+// Se dispara cuando alguien se apunta a cualquier evento (fiestas_signups)
+exports.onNewSignup = firestoreFn
+  .document("fiestas_signups/{signupId}")
+  .onCreate(async (snap) => {
+    const signup = snap.data();
+    if (!signup) return null;
+
+    // Nombre de quien se apunta
+    const personName = signup.name || signup.email || "Alguien";
+
+    // Determinar el nombre legible del evento
+    const eventTypeMap = {
+      juventud: "Fiestas de la Juventud 🎉",
+      santiago: "Fiestas de Santiago 🎊",
+      ferias:   "Ferias 🎡",
+    };
+
+    let eventLabel = eventTypeMap[signup.eventType] || null;
+
+    // Si es un evento temporal (evento_<id>), buscarlo en Firestore
+    if (!eventLabel && signup.eventType && signup.eventType.startsWith("evento_")) {
+      const eventoId = signup.eventType.replace("evento_", "");
+      try {
+        const eventoDoc = await admin.firestore().collection("eventos").doc(eventoId).get();
+        if (eventoDoc.exists) {
+          const ev = eventoDoc.data();
+          eventLabel = `${ev.nombre || "Evento temporal"} 📅`;
+        }
+      } catch {}
+    }
+    if (!eventLabel) eventLabel = signup.eventType || "Evento";
+
+    // Formatear fecha
+    let dateStr = signup.date || "";
+    try {
+      const d = new Date(signup.date + "T12:00:00");
+      dateStr = d.toLocaleDateString("es-ES", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+      });
+      dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+    } catch {}
+
+    // Construir detalle de comidas
+    const comidas = [
+      signup.almuerzo && "Almuerzo",
+      signup.comida   && "Comida",
+      signup.cena     && "Cena",
+    ].filter(Boolean);
+    const comidasStr = comidas.length > 0 ? comidas.join(", ") : "—";
+
+    // Personas
+    const adults   = Number(signup.adults   || 0);
+    const children = Number(signup.children || 0);
+    const personasStr = [
+      adults   > 0 && `${adults} adulto${adults   !== 1 ? "s" : ""}`,
+      children > 0 && `${children} niño${children !== 1 ? "s" : ""}`,
+    ].filter(Boolean).join(" + ") || "1 persona";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#6A8F3A;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <h1 style="color:white;margin:0;font-size:22px">📋 Nueva inscripción</h1>
+        </div>
+        <div style="background:#f9fdf5;border:1px solid #e0edcc;border-radius:0 0 12px 12px;padding:24px">
+          <p style="font-size:16px;color:#333;margin:0 0 16px">
+            <strong>${personName}</strong> se ha apuntado a:
+          </p>
+          <div style="background:rgba(106,143,58,0.10);border:1.5px solid rgba(106,143,58,0.25);border-radius:12px;padding:16px;margin:0 0 16px">
+            <div style="font-size:18px;font-weight:700;color:#4a7a1e;margin-bottom:8px">${eventLabel}</div>
+            <div style="font-size:14px;color:#555">📆 ${dateStr}</div>
+            <div style="font-size:14px;color:#555;margin-top:4px">🍽️ ${comidasStr}</div>
+            <div style="font-size:14px;color:#555;margin-top:4px">👥 ${personasStr}</div>
+          </div>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#6A8F3A;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:4px">
+            Ver en La Toalla App
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    const subject = `📋 ${personName} se ha apuntado a ${eventLabel}`;
+
+    // Obtener todos los usuarios con email
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+
+    if (emails.length === 0) {
+      console.log("No hay usuarios con email para notificar (nueva inscripción).");
+      return null;
+    }
+
+    for (const email of emails) {
+      try {
+        await sendMail(email, subject, html);
+      } catch (err) {
+        console.error(`Error enviando notificación de inscripción a ${email}:`, err.message);
+      }
+    }
+
+    console.log(`Inscripción de ${personName} en "${eventLabel}" notificada a ${emails.length} usuarios.`);
+    return null;
+  });

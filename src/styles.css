@@ -2663,3 +2663,99 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   font-size: 12px;
   color: #888;
 }
+
+/* =============================================
+   EMAIL PREFERENCES — Toggle switches
+   ============================================= */
+.emailpref-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.emailpref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg, #f5f7fb);
+  border-radius: 10px;
+}
+
+.emailpref-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text, #111827);
+}
+
+/* Toggle switch */
+.emailpref-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.emailpref-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.emailpref-slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.emailpref-slider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+
+.emailpref-toggle input:checked + .emailpref-slider {
+  background: var(--accent, #2563eb);
+}
+
+.emailpref-toggle input:checked + .emailpref-slider::before {
+  transform: translateX(20px);
+}
+
+/* Fila "siempre activos" */
+.emailpref-always {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(106,143,58,0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text, #111827);
+  margin-bottom: 4px;
+}
+
+.emailpref-always-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #6A8F3A);
+  background: rgba(106,143,58,0.12);
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
