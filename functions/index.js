@@ -32,6 +32,19 @@ function mailFooter() {
   `;
 }
 
+// ─── Helper: comprobar preferencias de email del usuario ─────────────────────
+async function userWantsEmail(uid, prefKey) {
+  try {
+    const prefDoc = await admin.firestore().collection("userPreferences").doc(uid).get();
+    if (!prefDoc.exists) return true; // sin doc → por defecto activo
+    const prefs = prefDoc.data();
+    if (!prefs._initialized) return true; // doc viejo sin flag → activo
+    return prefs[prefKey] !== false; // false explícito = desactivado
+  } catch {
+    return true; // si falla la lectura, enviamos igualmente
+  }
+}
+
 // ─── 1. EMAIL DE BIENVENIDA ────────────────────────────────────────────────────
 // Se dispara cuando Firebase Auth crea un nuevo usuario
 exports.onUserCreated = auth.user().onCreate(async (user) => {
@@ -127,25 +140,20 @@ exports.onNewEvento = firestoreFn
       </div>
     `;
 
-    // Obtener todos los usuarios con email
     const usersSnap = await admin.firestore().collection("users").get();
-    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
-
-    if (emails.length === 0) {
-      console.log("No hay usuarios con email para notificar.");
-      return null;
-    }
-
-    // Enviar de uno en uno para no saturar Gmail
-    for (const email of emails) {
+    let sent = 0;
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (!(await userWantsEmail(userDoc.id, "eventosTemporales"))) continue;
       try {
         await sendMail(email, `📅 Nuevo evento: ${evento.nombre}`, html);
+        sent++;
       } catch (err) {
         console.error(`Error enviando a ${email}:`, err.message);
       }
     }
-
-    console.log(`Notificación de evento enviada a ${emails.length} usuarios.`);
+    console.log(`Notificación de evento enviada a ${sent} usuarios.`);
     return null;
   });
 
@@ -166,7 +174,7 @@ exports.onNewNoticia = firestoreFn
     }[noticia.category] || "📢";
 
     const imageBlock = noticia.imageUrl
-      ? `<img src="${noticia.imageUrl}" alt="" style="width:100%;border-radius:8px;margin:16px 0 0">`
+      ? `<img src="${noticia.imageUrl}" alt="" style="max-width:100%;width:480px;border-radius:8px;margin:16px 0 0;display:block">`
       : "";
 
     const html = `
@@ -241,20 +249,19 @@ exports.onJuventudFechaFijada = firestoreFn
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
-
-    if (emails.length === 0) {
-      console.log("No hay usuarios con email para notificar (juventud).");
-    } else {
-      for (const email of emails) {
-        try {
-          await sendMail(email, `🎉 Fiestas de la Juventud — ${fechaTexto}`, html);
-        } catch (err) {
-          console.error(`Error enviando a ${email}:`, err.message);
-        }
+    let sent = 0;
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (!(await userWantsEmail(userDoc.id, "fiestasJuventud"))) continue;
+      try {
+        await sendMail(email, `🎉 Fiestas de la Juventud — ${fechaTexto}`, html);
+        sent++;
+      } catch (err) {
+        console.error(`Error enviando a ${email}:`, err.message);
       }
-      console.log(`Notificación Juventud enviada a ${emails.length} usuarios.`);
     }
+    console.log(`Notificación Juventud enviada a ${sent} usuarios.`);
 
     // Limpiar la bandera para no reenviar en el siguiente save
     try {
@@ -298,20 +305,19 @@ exports.onFeriasFechaFijada = firestoreFn
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
-
-    if (emails.length === 0) {
-      console.log("No hay usuarios con email para notificar (ferias).");
-    } else {
-      for (const email of emails) {
-        try {
-          await sendMail(email, `🎡 Ferias — ${fechaTexto}`, html);
-        } catch (err) {
-          console.error(`Error enviando a ${email}:`, err.message);
-        }
+    let sent = 0;
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (!(await userWantsEmail(userDoc.id, "ferias"))) continue;
+      try {
+        await sendMail(email, `🎡 Ferias — ${fechaTexto}`, html);
+        sent++;
+      } catch (err) {
+        console.error(`Error enviando a ${email}:`, err.message);
       }
-      console.log(`Notificación Ferias enviada a ${emails.length} usuarios.`);
     }
+    console.log(`Notificación Ferias enviada a ${sent} usuarios.`);
 
     try {
       await change.after.ref.update({ notifyUsers: false });
@@ -386,6 +392,11 @@ exports.onNewCandidatoCohete = firestoreFn
         </div>
       </div>
     `;
+
+    if (!(await userWantsEmail(candidato.candidateUid, "cohete"))) {
+      console.log(`El candidato ${candidato.candidateUid} tiene desactivado el email de cohete.`);
+      return null;
+    }
 
     try {
       await sendMail(
@@ -498,22 +509,19 @@ exports.felicesFiestasSantiago = pubsub
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
-
-    if (emails.length === 0) {
-      console.log("No hay usuarios con email para felicitar.");
-      return null;
-    }
-
-    for (const email of emails) {
+    let sent = 0;
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (!(await userWantsEmail(userDoc.id, "fiestasSantiago"))) continue;
       try {
         await sendMail(email, `🎆 ¡Felices Fiestas de Santiago ${year}! · VÍA SANTIAGO · GORA GARES!!`, html);
+        sent++;
       } catch (err) {
         console.error(`Error enviando felicitación a ${email}:`, err.message);
       }
     }
-
-    console.log(`Felicitación Fiestas Santiago ${year} enviada a ${emails.length} usuarios.`);
+    console.log(`Felicitación Fiestas Santiago ${year} enviada a ${sent} usuarios.`);
     return null;
   });
 

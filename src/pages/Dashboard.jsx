@@ -33,6 +33,7 @@ export default function Dashboard() {
     fiestasSantiago: true,
     ferias: true,
     eventosTemporales: true,
+    cohete: true,
   });
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function Dashboard() {
       fiestasSantiago: true,
       ferias: true,
       eventosTemporales: true,
+      cohete: true,
     };
     getDoc(prefRef).then((snap) => {
       if (snap.exists() && snap.data()._initialized) {
@@ -322,6 +324,7 @@ export default function Dashboard() {
                 { key: "fiestasSantiago",   label: "🎊 Fiestas de Santiago" },
                 { key: "ferias",            label: "🎡 Ferias" },
                 { key: "eventosTemporales", label: "📅 Eventos Temporales" },
+                { key: "cohete",            label: "🚀 Votación del Cohete" },
               ].map(({ key, label }) => (
                 <div key={key} className="emailpref-row">
                   <span className="emailpref-label">{label}</span>

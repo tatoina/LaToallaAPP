@@ -13,8 +13,9 @@ import {
   where,
 } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { db, auth, functions } from "../firebase";
+import { db, auth, functions, storage } from "../firebase";
 import { httpsCallable } from "firebase/functions";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -122,6 +123,26 @@ export default function AdminPanel() {
   });
   const [savingNoticia, setSavingNoticia] = useState(false);
   const [noticiaMsg, setNoticiaMsg] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(null); // null | 0-100
+  const noticiaFileRef = React.useRef(null);
+
+  const onNoticiaFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const storageRef = ref(storage, `noticias/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    setUploadProgress(0);
+    task.on(
+      "state_changed",
+      (snap) => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      (err) => { setNoticiaMsg("❌ Error al subir imagen: " + err.message); setUploadProgress(null); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setNoticiaForm((p) => ({ ...p, imageUrl: url }));
+        setUploadProgress(null);
+      }
+    );
+  };
 
   useEffect(() => {
     const q = query(collection(db, "noticias"), orderBy("createdAt", "desc"));
@@ -490,11 +511,40 @@ export default function AdminPanel() {
 
             <div className="noticia-image-section">
               <label className="noticia-img-label">🖼️ Imagen (opcional)</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn outline small"
+                  onClick={() => noticiaFileRef.current?.click()}
+                  disabled={uploadProgress !== null}
+                >
+                  📁 Elegir foto
+                </button>
+                {uploadProgress !== null && (
+                  <div style={{ flex: 1, minWidth: 120 }}>
+                    <div style={{ fontSize: 12, color: "#666", marginBottom: 3 }}>Subiendo… {uploadProgress}%</div>
+                    <div style={{ background: "#e5e7eb", borderRadius: 6, height: 6 }}>
+                      <div style={{ background: "var(--accent)", width: `${uploadProgress}%`, height: 6, borderRadius: 6, transition: "width 0.2s" }} />
+                    </div>
+                  </div>
+                )}
+                {noticiaForm.imageUrl && uploadProgress === null && (
+                  <button
+                    type="button"
+                    className="btn outline small"
+                    style={{ color: "#b91c1c", borderColor: "#b91c1c" }}
+                    onClick={() => { setNoticiaForm((p) => ({ ...p, imageUrl: "" })); if (noticiaFileRef.current) noticiaFileRef.current.value = ""; }}
+                  >
+                    ✕ Quitar
+                  </button>
+                )}
+              </div>
               <input
-                className="admin-input"
-                placeholder="Pega una URL de imagen..."
-                value={noticiaForm.imageUrl}
-                onChange={(e) => setNoticiaForm((p) => ({ ...p, imageUrl: e.target.value }))}
+                ref={noticiaFileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={onNoticiaFileChange}
               />
               {noticiaForm.imageUrl && (
                 <img
