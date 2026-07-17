@@ -34,6 +34,7 @@ export default function Dashboard() {
     ferias: true,
     eventosTemporales: true,
     cohete: true,
+    tienda: true,
   });
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function Dashboard() {
       ferias: true,
       eventosTemporales: true,
       cohete: true,
+      tienda: true,
     };
     getDoc(prefRef).then((snap) => {
       if (snap.exists() && snap.data()._initialized) {
@@ -77,6 +79,8 @@ export default function Dashboard() {
           fiestasSantiago: data.fiestasSantiago ?? true,
           ferias: data.ferias ?? true,
           eventosTemporales: data.eventosTemporales ?? true,
+          cohete: data.cohete ?? true,
+          tienda: data.tienda ?? true,
         });
       } else {
         // Primera vez o documento viejo sin flag: resetear a todo activado
@@ -225,6 +229,10 @@ export default function Dashboard() {
               <span className="dash-sec-icon">📦</span>
               <span>Gestión de Stock</span>
             </button>
+            <button className="dash-secondary-btn dash-secondary-btn--tienda" onClick={() => navigate("/tienda")}>
+              <span className="dash-sec-icon">🛒</span>
+              <span>Tienda</span>
+            </button>
             <button className="dash-secondary-btn dash-secondary-btn--cohete" onClick={() => navigate("/votacion-cohete")}>
               <span className="dash-sec-icon">🚀</span>
               <span>Votación: ¿Quién tirará el cohete en {new Date().getFullYear()}?</span>
@@ -325,6 +333,7 @@ export default function Dashboard() {
                 { key: "ferias",            label: "🎡 Ferias" },
                 { key: "eventosTemporales", label: "📅 Eventos Temporales" },
                 { key: "cohete",            label: "🚀 Votación del Cohete" },
+                { key: "tienda",            label: "🛒 Nuevos productos en la Tienda" },
               ].map(({ key, label }) => (
                 <div key={key} className="emailpref-row">
                   <span className="emailpref-label">{label}</span>

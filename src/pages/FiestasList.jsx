@@ -8,6 +8,9 @@ import {
   deleteDoc,
   doc,
   setDoc,
+  addDoc,
+  serverTimestamp,
+  where,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate, useParams } from "react-router-dom";
@@ -67,6 +70,79 @@ export default function FiestasList() {
   const [ticketForm, setTicketForm] = useState({ paidById: "", amount: "" });
   const [savingCuenta, setSavingCuenta] = useState(false);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
+
+  // --- Menús ---
+  const [showMenus, setShowMenus] = useState(false);
+  const [menus, setMenus] = useState([]);
+  const [menuForm, setMenuForm] = useState({ dia: "Lunes", cocinero: "", plato: "" });
+  const [savingMenu, setSavingMenu] = useState(false);
+  const [menuError, setMenuError] = useState("");
+  const [editingMenuId, setEditingMenuId] = useState(null);
+  const [editMenuForm, setEditMenuForm] = useState({ dia: "Lunes", cocinero: "", plato: "" });
+
+  useEffect(() => {
+    if (!urlKey) return;
+    const q = query(
+      collection(db, "fiestas_menus"),
+      where("eventType", "==", urlKey)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const ORDEN = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => ORDEN.indexOf(a.dia) - ORDEN.indexOf(b.dia));
+      setMenus(docs);
+    });
+    return () => unsub();
+  }, [urlKey]);
+
+  useEffect(() => {
+    if (showMenus && user) {
+      const nombre = user.displayName || user.email?.split("@")[0] || "";
+      setMenuForm((f) => ({ ...f, cocinero: f.cocinero || nombre }));
+    }
+  }, [showMenus, user]);
+
+  async function handleAddMenu(e) {
+    e.preventDefault();
+    setMenuError("");
+    if (!menuForm.plato.trim()) { setMenuError("Escribe qué se come."); return; }
+    if (!menuForm.cocinero.trim()) { setMenuError("Escribe quién cocina."); return; }
+    setSavingMenu(true);
+    try {
+      await addDoc(collection(db, "fiestas_menus"), {
+        dia: menuForm.dia,
+        cocinero: menuForm.cocinero.trim(),
+        plato: menuForm.plato.trim(),
+        eventType: urlKey,
+        uid: user?.uid || null,
+        email: user?.email || null,
+        createdAt: serverTimestamp(),
+      });
+      setMenuForm((f) => ({ ...f, plato: "" }));
+    } catch (err) {
+      console.error(err);
+      setMenuError("No se pudo guardar. Inténtalo de nuevo.");
+    } finally {
+      setSavingMenu(false);
+    }
+  }
+
+  async function handleDeleteMenu(menuId) {
+    try { await deleteDoc(doc(db, "fiestas_menus", menuId)); }
+    catch (err) { console.error(err); }
+  }
+
+  async function handleSaveMenuEdit(menuId) {
+    if (!editMenuForm.plato.trim() || !editMenuForm.cocinero.trim()) return;
+    try {
+      await updateDoc(doc(db, "fiestas_menus", menuId), {
+        dia: editMenuForm.dia,
+        cocinero: editMenuForm.cocinero.trim(),
+        plato: editMenuForm.plato.trim(),
+      });
+      setEditingMenuId(null);
+    } catch (err) { console.error(err); }
+  }
 
   useEffect(() => {
     const q = query(collection(db, "fiestas_signups"), orderBy("date", "asc"));
@@ -190,8 +266,7 @@ export default function FiestasList() {
         tickets,
       });
       setTicketForm({ paidById: "", amount: "" });
-      // Auto-abrir si ya hay cuentas guardadas
-      if (tickets.length > 0 || data.childPrice) setShowSettlement(true);
+      // No auto-abrir el ajuste de cuentas
     });
     return () => unsub();
   }, [cuentaDocId]);
@@ -210,9 +285,11 @@ export default function FiestasList() {
   }, [cuentaData]);
 
   const childPrice = Number(cuentaData.childPrice || 0);
-  const childTotal = childPrice * totChildren;
+  const childPriceSet = childPrice > 0;
+  const childTotal = childPriceSet ? childPrice * totChildren : 0;
   const remainingTotal = Math.max(0, ticketTotal - childTotal);
-  const adultShare = totAdults > 0 ? remainingTotal / totAdults : 0;
+  const effectivePeople = totAdults + (childPriceSet ? 0 : totChildren);
+  const adultShare = effectivePeople > 0 ? remainingTotal / effectivePeople : 0;
 
   const payerSummary = useMemo(() => {
     const map = new Map();
@@ -242,7 +319,7 @@ export default function FiestasList() {
 
     return Array.from(map.values())
       .map((item) => {
-        const owes = item.children * childPrice + item.adults * adultShare;
+        const owes = item.adults * adultShare + (childPriceSet ? item.children * childPrice : item.children * adultShare);
         return {
           ...item,
           owes,
@@ -250,7 +327,7 @@ export default function FiestasList() {
         };
       })
       .sort((a, b) => b.balance - a.balance);
-  }, [mealRows, cuentaData, childPrice, adultShare]);
+  }, [mealRows, cuentaData, childPrice, childPriceSet, adultShare]);
 
   // Lista mínima de transferencias para saldar deudas
   const transferList = useMemo(() => {
@@ -375,6 +452,18 @@ export default function FiestasList() {
     await saveCuenta(nextData);
   };
 
+  const onDeleteRow = async (s) => {
+    const first = window.confirm(
+      `¿Vas a borrar la inscripción de "${userName(s)}"?`
+    );
+    if (!first) return;
+    const second = window.confirm("¿Estás seguro? Esta acción no se puede deshacer.");
+    if (!second) return;
+    try {
+      await deleteDoc(doc(db, "fiestas_signups", s.id));
+    } catch (err) { console.error(err); alert("No se pudo borrar."); }
+  };
+
   const onDeleteTicket = async (ticketId) => {
     const nextData = {
       ...cuentaData,
@@ -382,6 +471,13 @@ export default function FiestasList() {
     };
     setCuentaData(nextData);
     await saveCuenta(nextData);
+  };
+
+  const onResetCuentas = async () => {
+    if (!window.confirm("¿Borrar todos los tickets y el precio por niño? Esta acción no se puede deshacer.")) return;
+    const nextData = { childPrice: "", tickets: [] };
+    setCuentaData(nextData);
+    await saveCuenta({ childPrice: 0, tickets: [] });
   };
 
   const stepLabel = (n, text) => (
@@ -585,7 +681,7 @@ export default function FiestasList() {
                 }}>
                   {/* Cabecera */}
                   <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 44px 44px 28px",
+                    display: "grid", gridTemplateColumns: "1fr 44px 44px 28px 32px",
                     padding: "7px 10px",
                     background: mealInfo?.color || "#3a6ea5",
                     color: "white", fontSize: 11, fontWeight: 700,
@@ -602,6 +698,7 @@ export default function FiestasList() {
                     <span style={{ textAlign: "center" }}>Ad.</span>
                     <span style={{ textAlign: "center" }}>Ni.</span>
                     <span></span>
+                    <span></span>
                   </div>
 
                   {/* Filas */}
@@ -610,12 +707,21 @@ export default function FiestasList() {
                     return (
                       <div key={s.id}
                         onClick={() => onEditClick(s)}
-                        style={{ borderTop: "1px solid #f0f5e8", background: idx % 2 === 1 ? (mealInfo?.bg || "#fafafa") : "white", display: "grid", gridTemplateColumns: "1fr 44px 44px 28px", alignItems: "center", padding: "9px 10px", cursor: "pointer" }}
+                        style={{ borderTop: "1px solid #f0f5e8", background: idx % 2 === 1 ? (mealInfo?.bg || "#fafafa") : "white", display: "grid", gridTemplateColumns: "1fr 44px 44px 28px 32px", alignItems: "center", padding: "9px 10px", cursor: "pointer" }}
                       >
                         <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName(s)}</span>
                         <span style={{ textAlign: "center", fontWeight: 700, color: "#3a6ea5", fontSize: 14 }}>{s.adults || 0}</span>
                         <span style={{ textAlign: "center", fontWeight: 700, color: "#d63a7a", fontSize: 14 }}>{s.children || 0}</span>
                         <span style={{ textAlign: "center", fontSize: 16, color: canEdit ? "var(--accent)" : "#ccc" }}>{canEdit ? "✏️" : "👁"}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteRow(s); }}
+                          title="Borrar inscripción"
+                          style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            fontSize: 15, color: "#c0392b", padding: "2px 4px",
+                            lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >🗑️</button>
                       </div>
                     );
                   })}
@@ -636,139 +742,6 @@ export default function FiestasList() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8, padding: "0 4px" }}>
-                    {showSettlement && (
-                      <div style={{ marginTop: 10, border: "1px solid #d8e6c2", borderRadius: 12, background: "white", padding: 12 }}>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 10 }}>
-                          Ajuste para {mealInfo?.label?.toLowerCase() || "la comida"}
-                        </div>
-
-                        <div style={{ display: "grid", gap: 10 }}>
-                          <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>TICKETS</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 92px auto", gap: 8 }}>
-                              <select
-                                value={ticketForm.paidById}
-                                onChange={(e) => setTicketForm((prev) => ({ ...prev, paidById: e.target.value }))}
-                                style={{ padding: "9px 10px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13 }}
-                              >
-                                <option value="">Quien ha pagado</option>
-                                {ticketOptions.map((opt) => (
-                                  <option key={opt.id} value={opt.id}>
-                                    {opt.name} ({opt.adults}A/{opt.children}N)
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="Precio"
-                                value={ticketForm.amount}
-                                onChange={(e) => setTicketForm((prev) => ({ ...prev, amount: e.target.value }))}
-                                style={{ padding: "9px 10px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13 }}
-                              />
-                              <button className="btn small" onClick={onAddTicket} disabled={savingCuenta}>Anadir ticket</button>
-                            </div>
-
-                            {(cuentaData.tickets || []).length > 0 ? (
-                              <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-                                {(cuentaData.tickets || []).map((ticket, idx) => (
-                                  <div key={ticket.id} style={{ display: "grid", gridTemplateColumns: "24px 1fr auto auto", gap: 8, alignItems: "center", fontSize: 13, padding: "7px 8px", borderRadius: 8, background: idx % 2 ? "#fafcf5" : "#f4f9eb" }}>
-                                    <span style={{ fontWeight: 700, color: "#78905a" }}>{idx + 1}</span>
-                                    <span style={{ fontWeight: 600 }}>{ticket.paidByName}</span>
-                                    <span style={{ fontWeight: 800, color: "#2f5a1e" }}>{money(ticket.amount)}</span>
-                                    <button className="btn outline small" style={{ padding: "3px 8px", fontSize: 11 }} onClick={() => onDeleteTicket(ticket.id)}>Quitar</button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div style={{ marginTop: 10, color: "#888", fontSize: 12 }}>Todavia no hay tickets anadidos.</div>
-                            )}
-                          </div>
-
-                          <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>PRECIO POR NINO</div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={cuentaData.childPrice}
-                                onChange={(e) => onChildPriceChange(e.target.value)}
-                                placeholder="Cuanto paga cada nino"
-                                style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13 }}
-                              />
-                              <div style={{ minWidth: 96, textAlign: "right", fontSize: 12, color: "#666" }}>
-                                {totChildren} ninos
-                              </div>
-                            </div>
-                          </div>
-
-                          <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#f7fbf0" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>RESUMEN</div>
-                            <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span>Total evento</span><strong>{money(ticketTotal)}</strong></div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span>Precio por nino establecido</span><strong>{money(childPrice)}</strong></div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span>Total ninos ({totChildren})</span><strong>{money(childTotal)}</strong></div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span>Resto a repartir entre adultos ({totAdults})</span><strong>{money(remainingTotal)}</strong></div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, paddingTop: 6, borderTop: "1px dashed #d6dfc6" }}><span>Sale por adulto</span><strong>{money(adultShare)}</strong></div>
-                            </div>
-                          </div>
-
-                          <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>BALANCE POR PERSONA</div>
-                            {payerSummary.length === 0 ? (
-                              <div style={{ color: "#888", fontSize: 12 }}>Cuando anadas tickets y precio por nino, aqui saldra el balance de cada persona.</div>
-                            ) : (
-                              <div style={{ display: "grid", gap: 6 }}>
-                                {payerSummary.map((payer) => {
-                                  const isPayer = payer.paid > 0;
-                                  const isZero = Math.abs(payer.balance) < 0.005;
-                                  const isPos = payer.balance > 0.005;
-                                  const bg = isZero ? "#f5f5f5" : isPos ? "#eef8e8" : "#fff2f2";
-                                  const border = isZero ? "#ddd" : isPos ? "#cfe4be" : "#f0cccc";
-                                  return (
-                                    <div key={payer.id} style={{ borderRadius: 8, padding: "8px 9px", background: bg, border: `1px solid ${border}` }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, fontWeight: 700 }}>
-                                        <span>{payer.name} {isPayer ? "🧾" : ""}</span>
-                                        <span style={{ color: isZero ? "#888" : isPos ? "#2f6b1b" : "#b42318" }}>
-                                          {isZero ? "En paz ✓" : isPos ? `↑ recibe ${money(payer.balance)}` : `↓ debe ${money(Math.abs(payer.balance))}`}
-                                        </span>
-                                      </div>
-                                      <div style={{ marginTop: 3, fontSize: 11, color: "#666", display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                        {isPayer && <span>Pago: {money(payer.paid)}</span>}
-                                        <span>Su parte: {money(payer.owes)}</span>
-                                        <span style={{ fontSize: 10, color: "#999" }}>({payer.adults}A/{payer.children}N)</span>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-
-                          {transferList.length > 0 && (
-                            <div style={{ border: "2px solid #f59e0b", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>💸 QUIEN PAGA A QUIEN</div>
-                              <div style={{ display: "grid", gap: 6 }}>
-                                {transferList.map((t, i) => (
-                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, padding: "7px 10px", background: "white", borderRadius: 8, border: "1px solid #fde68a" }}>
-                                    <span style={{ fontWeight: 700, color: "#b42318", flex: 1 }}>{t.from}</span>
-                                    <span style={{ color: "#f59e0b", fontWeight: 800, fontSize: 18 }}>→</span>
-                                    <span style={{ fontWeight: 700, color: "#2f6b1b", flex: 1, textAlign: "right" }}>{t.to}</span>
-                                    <span style={{ background: "#f59e0b", color: "white", borderRadius: 8, padding: "3px 10px", fontWeight: 800, fontSize: 13, minWidth: 72, textAlign: "center" }}>{money(t.amount)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
             </>
@@ -778,6 +751,191 @@ export default function FiestasList() {
             </div>
           )}
         </>
+      )}
+
+      {/* ─── MODAL AJUSTE DE CUENTAS ─── */}
+      {showSettlement && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9998, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setShowSettlement(false)}
+        >
+          <div
+            style={{ background: "white", borderRadius: "18px 18px 0 0", width: "100%", maxWidth: 520, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 -4px 32px rgba(0,0,0,0.15)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera fija */}
+            <div style={{ padding: "16px 18px 10px", borderBottom: "1px solid #e8f0d6", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>
+                🧾 Ajuste para {mealInfo?.label?.toLowerCase() || "la comida"}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {((cuentaData.tickets || []).length > 0 || cuentaData.childPrice) && (
+                  <button
+                    onClick={onResetCuentas}
+                    style={{ background: "none", border: "1px solid #f0cccc", borderRadius: 8, color: "#b42318", fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer" }}
+                  >🗑️ Resetear</button>
+                )}
+                <button onClick={() => setShowSettlement(false)} style={{ border: "none", background: "none", fontSize: 22, cursor: "pointer", color: "#888", lineHeight: 1, padding: 0 }}>✕</button>
+              </div>
+            </div>
+            {/* Contenido scrollable */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "12px 14px 32px", WebkitOverflowScrolling: "touch" }}>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>TICKETS</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 8, marginBottom: 8 }}>
+                    <select
+                      value={ticketForm.paidById}
+                      onChange={(e) => setTicketForm((prev) => ({ ...prev, paidById: e.target.value }))}
+                      style={{ padding: "9px 10px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13, minWidth: 0 }}
+                    >
+                      <option value="">Quien ha pagado</option>
+                      {ticketOptions.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.name} ({opt.adults}A/{opt.children}N)
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="€"
+                      value={ticketForm.amount}
+                      onChange={(e) => setTicketForm((prev) => ({ ...prev, amount: e.target.value }))}
+                      style={{ padding: "9px 10px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13 }}
+                    />
+                  </div>
+                  <button className="btn small" style={{ width: "100%", padding: "10px" }} onClick={onAddTicket} disabled={savingCuenta}>+ Añadir ticket</button>
+
+                  {(cuentaData.tickets || []).length > 0 ? (
+                    <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+                      {(cuentaData.tickets || []).map((ticket, idx) => (
+                        <div key={ticket.id} style={{ display: "grid", gridTemplateColumns: "24px 1fr auto auto", gap: 8, alignItems: "center", fontSize: 13, padding: "7px 8px", borderRadius: 8, background: idx % 2 ? "#fafcf5" : "#f4f9eb" }}>
+                          <span style={{ fontWeight: 700, color: "#78905a" }}>{idx + 1}</span>
+                          <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ticket.paidByName}</span>
+                          <span style={{ fontWeight: 800, color: "#2f5a1e" }}>{money(ticket.amount)}</span>
+                          <button className="btn outline small" style={{ padding: "3px 8px", fontSize: 11 }} onClick={() => onDeleteTicket(ticket.id)}>Quitar</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 10, color: "#888", fontSize: 12 }}>Todavia no hay tickets anadidos.</div>
+                  )}
+                </div>
+
+                <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>PRECIO POR NIÑO</div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cuentaData.childPrice}
+                      onChange={(e) => onChildPriceChange(e.target.value)}
+                      placeholder="Cuánto paga cada niño"
+                      style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13 }}
+                    />
+                    <div style={{ flexShrink: 0, textAlign: "right", fontSize: 12, color: "#666" }}>
+                      {totChildren} niños
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#f7fbf0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>RESUMEN</div>
+                  <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Total evento</span><strong>{money(ticketTotal)}</strong></div>
+                    {childPriceSet ? (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Precio por niño</span><strong>{money(childPrice)}</strong></div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Total niños ({totChildren})</span><strong>{money(childTotal)}</strong></div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Resto entre adultos ({totAdults})</span><strong>{money(remainingTotal)}</strong></div>
+                      </>
+                    ) : (
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ color: "#888", fontStyle: "italic" }}>Niños cuentan como adultos</span>
+                        <strong>{totAdults}A + {totChildren}N = {effectivePeople} personas</strong>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", paddingTop: 6, borderTop: "1px dashed #d6dfc6" }}><span>Sale por {childPriceSet ? "adulto" : "persona"}</span><strong>{money(adultShare)}</strong></div>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>BALANCE POR PERSONA</div>
+                  {payerSummary.length === 0 ? (
+                    <div style={{ color: "#888", fontSize: 12 }}>Cuando añadas tickets y precio por niño, aquí saldrá el balance de cada persona.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {payerSummary.map((payer) => {
+                        const isPayer = payer.paid > 0;
+                        const isZero = Math.abs(payer.balance) < 0.005;
+                        const isPos = payer.balance > 0.005;
+                        const bg = isZero ? "#f5f5f5" : isPos ? "#eef8e8" : "#fff2f2";
+                        const border = isZero ? "#ddd" : isPos ? "#cfe4be" : "#f0cccc";
+                        const adultCost = payer.adults * adultShare;
+                        const childCost = payer.children * childPrice;
+                        return (
+                          <div key={payer.id} style={{ borderRadius: 8, padding: "8px 10px", background: bg, border: `1px solid ${border}` }}>
+                            {/* Nombre + balance */}
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, fontWeight: 700, flexWrap: "wrap" }}>
+                              <span>{payer.name} {isPayer ? "🧾" : ""}</span>
+                              <span style={{ color: isZero ? "#888" : isPos ? "#2f6b1b" : "#b42318" }}>
+                                {isZero ? "En paz ✓" : isPos ? `↑ recibe ${money(payer.balance)}` : `↓ debe ${money(Math.abs(payer.balance))}`}
+                              </span>
+                            </div>
+                            {/* Desglose adultos / niños */}
+                            <div style={{ marginTop: 6, display: "grid", gap: 2, fontSize: 11, color: "#555" }}>
+                              {payer.adults > 0 && (
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span>Adultos: {payer.adults} × {money(adultShare)}</span>
+                                  <strong>{money(payer.adults * adultShare)}</strong>
+                                </div>
+                              )}
+                              {payer.children > 0 && (
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span>Niños: {payer.children} × {money(childPriceSet ? childPrice : adultShare)}{!childPriceSet && " (= adulto)"}</span>
+                                  <strong>{money(payer.children * (childPriceSet ? childPrice : adultShare))}</strong>
+                                </div>
+                              )}
+                              <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #ccc", marginTop: 3, paddingTop: 3, fontWeight: 700, color: "#333" }}>
+                                <span>Total a pagar</span>
+                                <span>{money(payer.owes)}</span>
+                              </div>
+                              {isPayer && (
+                                <div style={{ display: "flex", justifyContent: "space-between", color: "#2f6b1b", fontWeight: 700 }}>
+                                  <span>Pagó</span>
+                                  <span>{money(payer.paid)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {transferList.length > 0 && (
+                  <div style={{ border: "2px solid #f59e0b", borderRadius: 10, padding: 10, background: "#fffbeb" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>💸 QUIÉN PAGA A QUIÉN</div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {transferList.map((t, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, padding: "7px 10px", background: "white", borderRadius: 8, border: "1px solid #fde68a", flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 700, color: "#b42318", flex: 1, minWidth: 60 }}>{t.from}</span>
+                          <span style={{ color: "#f59e0b", fontWeight: 800, fontSize: 16 }}>→</span>
+                          <span style={{ fontWeight: 700, color: "#2f6b1b", flex: 1, minWidth: 60 }}>{t.to}</span>
+                          <span style={{ background: "#f59e0b", color: "white", borderRadius: 8, padding: "3px 10px", fontWeight: 800, fontSize: 13 }}>{money(t.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ─── MODAL AVISO BORRADO ─── */}
@@ -819,20 +977,20 @@ export default function FiestasList() {
 
       {/* ─── BOTONES AJUSTE Y BORRADO ─── */}
       {mealRows.length > 0 && (
-        <div className="page-bottom-nav" style={{ marginTop: 14 }}>
+        <div className="page-bottom-nav" style={{ marginTop: 14, gridTemplateColumns: "1fr 1fr" }}>
           <button
             className="nav-bottom-btn"
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, whiteSpace: "normal", lineHeight: 1.3 }}
             onClick={() => setShowSettlement((prev) => !prev)}
           >
-            <span>{showSettlement ? "▲ Cerrar ajuste" : "🧾 Ajuste de cuentas"}</span>
-            {!showSettlement && (cuentaData.tickets || []).length > 0 && (
-              <span style={{ background: "#2f6b1b", color: "white", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 800 }}>✓</span>
+            <span>🧾 Ajuste de cuentas</span>
+            {(cuentaData.tickets || []).length > 0 && (
+              <span style={{ background: "#2f6b1b", color: "white", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>✓</span>
             )}
           </button>
           <button
             className="nav-bottom-btn"
-            style={{ color: "#b42318" }}
+            style={{ color: "#b42318", whiteSpace: "normal", lineHeight: 1.3 }}
             onClick={() => setShowDeleteWarning(true)}
           >
             🗑️ Borrar inscripciones
@@ -842,8 +1000,85 @@ export default function FiestasList() {
 
       <div className="page-bottom-nav" style={{ marginTop: 16 }}>
         <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
+        {urlKey && <button className="nav-bottom-btn menus" onClick={() => setShowMenus(true)}>🍽️ Menús</button>}
         <button className="nav-bottom-btn accent" onClick={() => navigate("/fiestas/list")}>{"📋"} Eventos</button>
       </div>
+
+      {showMenus && (
+        <div
+          role="dialog" aria-modal="true" aria-label="Menús"
+          style={{ position: "fixed", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 99999, background: "rgba(0,0,0,0.45)", padding: "20px 12px", overflowY: "auto" }}
+          onClick={() => setShowMenus(false)}
+        >
+          <div
+            style={{ background: "#fff", borderRadius: 16, padding: "22px 18px", width: "100%", maxWidth: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#7c3aed" }}>🍽️ Menús</div>
+              <button onClick={() => setShowMenus(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+            </div>
+
+            {menus.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#aaa", fontSize: 14, marginBottom: 16 }}>Aún no hay menús registrados</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {menus.map((m) => (
+                  <div key={m.id} style={{ background: "#f5f3ff", border: "1.5px solid #e9d5ff", borderRadius: 10, padding: "10px 12px" }}>
+                    {editingMenuId === m.id ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <select value={editMenuForm.dia} onChange={(e) => setEditMenuForm((f) => ({ ...f, dia: e.target.value }))} style={{ padding: "6px 8px", borderRadius: 7, border: "1.5px solid #c4b5fd", fontSize: 13, background: "#fff" }}>
+                          {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map((d) => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <input type="text" value={editMenuForm.cocinero} maxLength={60} onChange={(e) => setEditMenuForm((f) => ({ ...f, cocinero: e.target.value }))} placeholder="Quién cocina" style={{ padding: "6px 8px", borderRadius: 7, border: "1.5px solid #c4b5fd", fontSize: 13 }} />
+                        <input type="text" value={editMenuForm.plato} maxLength={120} onChange={(e) => setEditMenuForm((f) => ({ ...f, plato: e.target.value }))} placeholder="Qué se come" style={{ padding: "6px 8px", borderRadius: 7, border: "1.5px solid #c4b5fd", fontSize: 13 }} />
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => handleSaveMenuEdit(m.id)} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "none", background: "#7c3aed", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Guardar</button>
+                          <button onClick={() => setEditingMenuId(null)} style={{ padding: "7px 12px", borderRadius: 8, border: "1.5px solid #ddd", background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#7c3aed" }}>{m.dia}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#222", marginTop: 2 }}><span style={{ color: "#888", fontWeight: 500 }}>Menú: </span>{m.plato}</div>
+                          <div style={{ fontSize: 12, color: "#666", marginTop: 1 }}><span style={{ color: "#888" }}>Cocina: </span>{m.cocinero}</div>
+                        </div>
+                        <button onClick={() => { setEditingMenuId(m.id); setEditMenuForm({ dia: m.dia, cocinero: m.cocinero, plato: m.plato }); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: 4, flexShrink: 0 }} title="Editar">✏️</button>
+                        <button onClick={() => handleDeleteMenu(m.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#b42318", padding: 4, flexShrink: 0 }} title="Eliminar">🗑️</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ borderTop: "1.5px solid #e9d5ff", paddingTop: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#555", marginBottom: 10 }}>➕ Añadir menú</div>
+              <form onSubmit={handleAddMenu} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#444" }}>
+                  Día
+                  <select value={menuForm.dia} onChange={(e) => setMenuForm((f) => ({ ...f, dia: e.target.value }))} style={{ padding: "8px 10px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14, background: "#fff" }}>
+                    {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#444" }}>
+                  Quién cocina
+                  <input type="text" value={menuForm.cocinero} onChange={(e) => setMenuForm((f) => ({ ...f, cocinero: e.target.value }))} placeholder="Tu nombre" maxLength={60} style={{ padding: "8px 10px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14 }} />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#444" }}>
+                  Qué se come
+                  <input type="text" value={menuForm.plato} onChange={(e) => setMenuForm((f) => ({ ...f, plato: e.target.value }))} placeholder="Ej: Paella con marisco" maxLength={120} style={{ padding: "8px 10px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14 }} />
+                </label>
+                {menuError && <p style={{ color: "#b42318", fontSize: 13, margin: 0 }}>{menuError}</p>}
+                <button type="submit" disabled={savingMenu} style={{ padding: "11px 0", borderRadius: 10, border: "none", background: "#7c3aed", color: "#fff", fontWeight: 700, fontSize: 15, cursor: savingMenu ? "not-allowed" : "pointer", opacity: savingMenu ? 0.7 : 1 }}>
+                  {savingMenu ? "Guardando..." : "Guardar menú"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

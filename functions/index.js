@@ -25,6 +25,21 @@ async function sendMail(to, subject, html) {
   console.log(`✉️ Email enviado a ${to}: ${subject}`);
 }
 
+// Envío masivo con BCC: un solo email a todos → consume solo 1 cuota de Gmail
+async function sendMailBcc(emails, subject, html) {
+  if (!emails || emails.length === 0) return 0;
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: `"La Toalla App" <${process.env.GMAIL_EMAIL}>`,
+    to: process.env.GMAIL_EMAIL, // remitente como destinatario visible
+    bcc: emails.join(","),
+    subject,
+    html,
+  });
+  console.log(`✉️ Email BCC enviado a ${emails.length} destinatarios: ${subject}`);
+  return emails.length;
+}
+
 function mailFooter() {
   return `
     <hr style="border:none;border-top:1px solid #e0e0e0;margin:28px 0 16px">
@@ -141,19 +156,19 @@ exports.onNewEvento = firestoreFn
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    let sent = 0;
+    const emails = [];
     for (const userDoc of usersSnap.docs) {
       const email = userDoc.data().email;
       if (!email) continue;
       if (!(await userWantsEmail(userDoc.id, "eventosTemporales"))) continue;
-      try {
-        await sendMail(email, `📅 Nuevo evento: ${evento.nombre}`, html);
-        sent++;
-      } catch (err) {
-        console.error(`Error enviando a ${email}:`, err.message);
-      }
+      emails.push(email);
     }
-    console.log(`Notificación de evento enviada a ${sent} usuarios.`);
+    try {
+      const sent = await sendMailBcc(emails, `📅 Nuevo evento: ${evento.nombre}`, html);
+      console.log(`Notificación de evento enviada a ${sent} usuarios.`);
+    } catch (err) {
+      console.error("Error enviando evento BCC:", err.message);
+    }
     return null;
   });
 
@@ -205,15 +220,12 @@ exports.onNewNoticia = firestoreFn
       return null;
     }
 
-    for (const email of emails) {
-      try {
-        await sendMail(email, `${categoryEmoji} ${noticia.title}`, html);
-      } catch (err) {
-        console.error(`Error enviando noticia a ${email}:`, err.message);
-      }
+    try {
+      const sent = await sendMailBcc(emails, `${categoryEmoji} ${noticia.title}`, html);
+      console.log(`Noticia enviada a ${sent} usuarios (BCC).`);
+    } catch (err) {
+      console.error("Error enviando noticia BCC:", err.message);
     }
-
-    console.log(`Noticia enviada a ${emails.length} usuarios.`);
     return null;
   });
 
@@ -249,19 +261,19 @@ exports.onJuventudFechaFijada = firestoreFn
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    let sent = 0;
+    const emails = [];
     for (const userDoc of usersSnap.docs) {
       const email = userDoc.data().email;
       if (!email) continue;
       if (!(await userWantsEmail(userDoc.id, "fiestasJuventud"))) continue;
-      try {
-        await sendMail(email, `🎉 Fiestas de la Juventud — ${fechaTexto}`, html);
-        sent++;
-      } catch (err) {
-        console.error(`Error enviando a ${email}:`, err.message);
-      }
+      emails.push(email);
     }
-    console.log(`Notificación Juventud enviada a ${sent} usuarios.`);
+    try {
+      const sent = await sendMailBcc(emails, `🎉 Fiestas de la Juventud — ${fechaTexto}`, html);
+      console.log(`Notificación Juventud enviada a ${sent} usuarios (BCC).`);
+    } catch (err) {
+      console.error("Error enviando Juventud BCC:", err.message);
+    }
 
     // Limpiar la bandera para no reenviar en el siguiente save
     try {
@@ -305,19 +317,19 @@ exports.onFeriasFechaFijada = firestoreFn
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    let sent = 0;
+    const emails = [];
     for (const userDoc of usersSnap.docs) {
       const email = userDoc.data().email;
       if (!email) continue;
       if (!(await userWantsEmail(userDoc.id, "ferias"))) continue;
-      try {
-        await sendMail(email, `🎡 Ferias — ${fechaTexto}`, html);
-        sent++;
-      } catch (err) {
-        console.error(`Error enviando a ${email}:`, err.message);
-      }
+      emails.push(email);
     }
-    console.log(`Notificación Ferias enviada a ${sent} usuarios.`);
+    try {
+      const sent = await sendMailBcc(emails, `🎡 Ferias — ${fechaTexto}`, html);
+      console.log(`Notificación Ferias enviada a ${sent} usuarios (BCC).`);
+    } catch (err) {
+      console.error("Error enviando Ferias BCC:", err.message);
+    }
 
     try {
       await change.after.ref.update({ notifyUsers: false });
@@ -509,19 +521,73 @@ exports.felicesFiestasSantiago = pubsub
     `;
 
     const usersSnap = await admin.firestore().collection("users").get();
-    let sent = 0;
+    const emails = [];
     for (const userDoc of usersSnap.docs) {
       const email = userDoc.data().email;
       if (!email) continue;
       if (!(await userWantsEmail(userDoc.id, "fiestasSantiago"))) continue;
-      try {
-        await sendMail(email, `🎆 ¡Felices Fiestas de Santiago ${year}! · VÍA SANTIAGO · GORA GARES!!`, html);
-        sent++;
-      } catch (err) {
-        console.error(`Error enviando felicitación a ${email}:`, err.message);
-      }
+      emails.push(email);
     }
-    console.log(`Felicitación Fiestas Santiago ${year} enviada a ${sent} usuarios.`);
+    try {
+      const sent = await sendMailBcc(emails, `🎆 ¡Felices Fiestas de Santiago ${year}! · VÍA SANTIAGO · GORA GARES!!`, html);
+      console.log(`Felicitación Fiestas Santiago ${year} enviada a ${sent} usuarios (BCC).`);
+    } catch (err) {
+      console.error("Error enviando Santiago BCC:", err.message);
+    }
+    return null;
+  });
+
+// ─── NUEVO PRODUCTO EN LA TIENDA ──────────────────────────────────────────────────────
+// Se dispara cuando el admin crea un producto en "tienda_productos"
+exports.onNewTiendaProducto = firestoreFn
+  .document("tienda_productos/{productoId}")
+  .onCreate(async (snap) => {
+    const producto = snap.data();
+    if (!producto) return null;
+
+    const precioStr = Number(producto.precio).toLocaleString("es-ES", {
+      style: "currency",
+      currency: "EUR",
+    });
+
+    const imagenBlock = producto.fotoUrl
+      ? `<img src="${producto.fotoUrl}" alt="${producto.nombre}" style="max-width:100%;width:300px;border-radius:10px;margin:16px 0;display:block">`
+      : "";
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px">
+        <div style="background:#1e40af;border-radius:12px 12px 0 0;padding:24px;text-align:center">
+          <div style="font-size:42px;margin-bottom:8px">🛒</div>
+          <h1 style="color:white;margin:0;font-size:20px">¡Nuevo producto en la Tienda!</h1>
+        </div>
+        <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:0 0 12px 12px;padding:24px">
+          <h2 style="color:#1e3a8a;margin:0 0 8px;font-size:22px">${producto.nombre}</h2>
+          <p style="font-size:20px;font-weight:700;color:#2563eb;margin:0 0 12px">${precioStr}</p>
+          ${imagenBlock}
+          <p style="color:#555;font-size:14px">Ya puedes pedirlo desde la app en la sección <strong>Tienda</strong>.</p>
+          <a href="https://latoallaapp-daf6c.web.app"
+             style="display:inline-block;background:#1e40af;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px">
+            Ir a la Tienda
+          </a>
+          ${mailFooter()}
+        </div>
+      </div>
+    `;
+
+    const usersSnap = await admin.firestore().collection("users").get();
+    const emails = [];
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (!(await userWantsEmail(userDoc.id, "tienda"))) continue;
+      emails.push(email);
+    }
+    try {
+      const sent = await sendMailBcc(emails, `🛒 Nuevo producto en la Tienda: ${producto.nombre}`, html);
+      console.log(`Notificación nuevo producto tienda enviada a ${sent} usuarios (BCC).`);
+    } catch (err) {
+      console.error("Error enviando tienda BCC:", err.message);
+    }
     return null;
   });
 
@@ -720,23 +786,33 @@ exports.onNewSignup = firestoreFn
 
     const subject = `📋 ${personName} se ha apuntado a ${eventLabel}`;
 
-    // Obtener todos los usuarios con email
-    const usersSnap = await admin.firestore().collection("users").get();
-    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
-
-    if (emails.length === 0) {
-      console.log("No hay usuarios con email para notificar (nueva inscripción).");
-      return null;
+    // Clave de preferencia según el tipo de evento
+    const prefKeyMap = {
+      juventud: "fiestasJuventud",
+      santiago: "fiestasSantiago",
+      ferias:   "ferias",
+    };
+    let prefKey = prefKeyMap[signup.eventType] || null;
+    if (!prefKey && signup.eventType && signup.eventType.startsWith("evento_")) {
+      prefKey = "eventosTemporales";
     }
 
-    for (const email of emails) {
+    // Obtener todos los usuarios con email y comprobar preferencias individualmente
+    const usersSnap = await admin.firestore().collection("users").get();
+    let sent = 0;
+
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (prefKey && !(await userWantsEmail(userDoc.id, prefKey))) continue;
       try {
         await sendMail(email, subject, html);
+        sent++;
       } catch (err) {
         console.error(`Error enviando notificación de inscripción a ${email}:`, err.message);
       }
     }
 
-    console.log(`Inscripción de ${personName} en "${eventLabel}" notificada a ${emails.length} usuarios.`);
+    console.log(`Inscripción de ${personName} en "${eventLabel}" notificada a ${sent} usuarios.`);
     return null;
   });

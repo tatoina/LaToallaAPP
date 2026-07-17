@@ -25,7 +25,7 @@ const EVENT_LABELS = {
   ferias:   "🎡 Ferias",
 };
 
-const TABS = ["Usuarios", "Inscripciones", "Noticias", "Sugerencias"];
+const TABS = ["Usuarios", "Inscripciones", "Noticias", "Sugerencias", "Tienda"];
 const NOTICIA_CATEGORIES = ["General", "Fiestas Juventud", "Fiestas Santiago", "Ferias", "Eventos"];
 
 export default function AdminPanel() {
@@ -197,6 +197,140 @@ export default function AdminPanel() {
     try { await deleteDoc(doc(db, "sugerencias", id)); }
     catch (e) { alert("Error: " + e.message); }
   };
+  // ── TIENDA ────────────────────────────────────────────────────────────────────
+  const [tiendaProductos, setTiendaProductos] = useState([]);
+  const [tiendaPedidos, setTiendaPedidos] = useState([]);
+  const [tiendaForm, setTiendaForm] = useState({ nombre: "", precio: "" });
+  const [tiendaFotoUrl, setTiendaFotoUrl] = useState("");
+  const [tiendaUploadPct, setTiendaUploadPct] = useState(null);
+  const [tiendaMsg, setTiendaMsg] = useState("");
+  const [savingProducto, setSavingProducto] = useState(false);
+  const [tiendaSubTab, setTiendaSubTab] = useState("productos"); // "productos" | "pedidos"
+  const tiendaFileRef = React.useRef(null);
+  const [editingProducto, setEditingProducto] = useState(null); // id del producto en edición
+  const [editProductoData, setEditProductoData] = useState({ nombre: "", precio: "" });
+  const [editProductoFotoUrl, setEditProductoFotoUrl] = useState("");
+  const [editProductoUploadPct, setEditProductoUploadPct] = useState(null);
+  const [savingEditProducto, setSavingEditProducto] = useState(false);
+  const editProductoFileRef = React.useRef(null);
+
+  useEffect(() => {
+    const q = query(collection(db, "tienda_productos"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setTiendaProductos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "tienda_pedidos"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setTiendaPedidos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  const onTiendaFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const storageRef = ref(storage, `tienda/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    setTiendaUploadPct(0);
+    task.on(
+      "state_changed",
+      (snap) => setTiendaUploadPct(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      (err) => { setTiendaMsg("❌ Error al subir imagen: " + err.message); setTiendaUploadPct(null); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setTiendaFotoUrl(url);
+        setTiendaUploadPct(null);
+      }
+    );
+  };
+
+  const onCrearProducto = async () => {
+    if (!tiendaForm.nombre.trim()) { setTiendaMsg("❌ El nombre es obligatorio."); return; }
+    const precio = parseFloat(tiendaForm.precio);
+    if (isNaN(precio) || precio < 0) { setTiendaMsg("❌ El precio debe ser un número válido."); return; }
+    setSavingProducto(true);
+    setTiendaMsg("");
+    try {
+      await addDoc(collection(db, "tienda_productos"), {
+        nombre: tiendaForm.nombre.trim(),
+        precio,
+        fotoUrl: tiendaFotoUrl,
+        createdAt: serverTimestamp(),
+      });
+      setTiendaForm({ nombre: "", precio: "" });
+      setTiendaFotoUrl("");
+      if (tiendaFileRef.current) tiendaFileRef.current.value = "";
+      setTiendaMsg("✅ Producto creado correctamente.");
+      setTimeout(() => setTiendaMsg(""), 4000);
+    } catch (e) { setTiendaMsg("❌ Error: " + e.message); }
+    finally { setSavingProducto(false); }
+  };
+
+  const onDeleteProducto = async (id) => {
+    if (!window.confirm("¿Borrar este producto?")) return;
+    try { await deleteDoc(doc(db, "tienda_productos", id)); }
+    catch (e) { alert("Error: " + e.message); }
+  };
+
+  const onStartEditProducto = (prod) => {
+    setEditingProducto(prod.id);
+    setEditProductoData({ nombre: prod.nombre, precio: String(prod.precio) });
+    setEditProductoFotoUrl(prod.fotoUrl || "");
+    setEditProductoUploadPct(null);
+  };
+
+  const onEditProductoFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const storageRef = ref(storage, `tienda/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    setEditProductoUploadPct(0);
+    task.on(
+      "state_changed",
+      (snap) => setEditProductoUploadPct(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      (err) => { alert("❌ Error al subir imagen: " + err.message); setEditProductoUploadPct(null); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setEditProductoFotoUrl(url);
+        setEditProductoUploadPct(null);
+      }
+    );
+  };
+
+  const onSaveEditProducto = async (id) => {
+    if (!editProductoData.nombre.trim()) { alert("❌ El nombre es obligatorio."); return; }
+    const precio = parseFloat(editProductoData.precio);
+    if (isNaN(precio) || precio < 0) { alert("❌ El precio debe ser un número válido."); return; }
+    setSavingEditProducto(true);
+    try {
+      await updateDoc(doc(db, "tienda_productos", id), {
+        nombre: editProductoData.nombre.trim(),
+        precio,
+        fotoUrl: editProductoFotoUrl,
+      });
+      setEditingProducto(null);
+    } catch (e) { alert("Error: " + e.message); }
+    finally { setSavingEditProducto(false); }
+  };
+
+  const onTogglePedidoEstado = async (pedido) => {
+    const nuevoEstado = pedido.estado === "pagado" ? "pendiente" : "pagado";
+    try { await updateDoc(doc(db, "tienda_pedidos", pedido.id), { estado: nuevoEstado }); }
+    catch (e) { alert("Error: " + e.message); }
+  };
+
+  const onDeletePedido = async (id) => {
+    if (!window.confirm("¿Borrar este pedido?")) return;
+    try { await deleteDoc(doc(db, "tienda_pedidos", id)); }
+    catch (e) { alert("Error: " + e.message); }
+  };
+
+  const formatPrecio = (p) =>
+    Number(p).toLocaleString("es-ES", { style: "currency", currency: "EUR" });
   // ── INSCRIPCIONES ─────────────────────────────────────────
   const [signups, setSignups] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -301,7 +435,7 @@ export default function AdminPanel() {
             className={`admin-tab${activeTab === t ? " active" : ""}`}
             onClick={() => setActiveTab(t)}
           >
-            {t === "Usuarios" ? "👥 Usuarios" : t === "Inscripciones" ? "📋 Inscripciones" : t === "Noticias" ? "📢 Noticias" : "✉️ Sugerencias"}
+            {t === "Usuarios" ? "👥 Usuarios" : t === "Inscripciones" ? "📋 Inscripciones" : t === "Noticias" ? "📢 Noticias" : t === "Tienda" ? "🛒 Tienda" : "✉️ Sugerencias"}
           </button>
         ))}
       </div>
@@ -627,6 +761,262 @@ export default function AdminPanel() {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* ── PESTAÑA TIENDA ── */}
+      {activeTab === "Tienda" && (
+        <div className="admin-section">
+          {/* Sub-tabs */}
+          <div className="admin-tabs" style={{ marginBottom: 16 }}>
+            <button
+              className={`admin-tab${tiendaSubTab === "productos" ? " active" : ""}`}
+              onClick={() => setTiendaSubTab("productos")}
+            >🛍️ Productos</button>
+            <button
+              className={`admin-tab${tiendaSubTab === "pedidos" ? " active" : ""}`}
+              onClick={() => setTiendaSubTab("pedidos")}
+            >📦 Pedidos</button>
+          </div>
+
+          {/* ── Gestión de productos ── */}
+          {tiendaSubTab === "productos" && (
+            <div>
+              <div className="noticia-form-card">
+                <h3 className="noticia-form-title">➕ Nuevo producto</h3>
+                <input
+                  className="admin-input"
+                  placeholder="Nombre del producto"
+                  value={tiendaForm.nombre}
+                  onChange={(e) => setTiendaForm((p) => ({ ...p, nombre: e.target.value }))}
+                />
+                <input
+                  className="admin-input"
+                  placeholder="Precio (ej: 2.50)"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={tiendaForm.precio}
+                  onChange={(e) => setTiendaForm((p) => ({ ...p, precio: e.target.value }))}
+                />
+                <div className="noticia-image-section">
+                  <label className="noticia-img-label">🖼️ Foto del producto (opcional)</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn outline small"
+                      onClick={() => tiendaFileRef.current?.click()}
+                      disabled={tiendaUploadPct !== null}
+                    >📁 Elegir foto</button>
+                    {tiendaUploadPct !== null && (
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <div style={{ fontSize: 12, color: "#666", marginBottom: 3 }}>Subiendo… {tiendaUploadPct}%</div>
+                        <div style={{ background: "#e5e7eb", borderRadius: 6, height: 6 }}>
+                          <div style={{ background: "var(--accent)", width: `${tiendaUploadPct}%`, height: 6, borderRadius: 6, transition: "width 0.2s" }} />
+                        </div>
+                      </div>
+                    )}
+                    {tiendaFotoUrl && tiendaUploadPct === null && (
+                      <button
+                        type="button"
+                        className="btn outline small"
+                        style={{ color: "#b91c1c", borderColor: "#b91c1c" }}
+                        onClick={() => { setTiendaFotoUrl(""); if (tiendaFileRef.current) tiendaFileRef.current.value = ""; }}
+                      >✕ Quitar</button>
+                    )}
+                  </div>
+                  <input
+                    ref={tiendaFileRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={onTiendaFileChange}
+                  />
+                  {tiendaFotoUrl && (
+                    <img
+                      src={tiendaFotoUrl}
+                      alt="preview"
+                      className="noticia-img-preview"
+                      onError={(e) => { e.target.style.display = "none"; }}
+                    />
+                  )}
+                </div>
+                {tiendaMsg && (
+                  <p className={`noticia-msg${tiendaMsg.startsWith("✅") ? " ok" : " err"}`}>{tiendaMsg}</p>
+                )}
+                <button
+                  className="btn large"
+                  onClick={onCrearProducto}
+                  disabled={savingProducto || tiendaUploadPct !== null}
+                  style={{ marginTop: 4 }}
+                >
+                  {savingProducto ? "Guardando..." : "💾 Crear producto"}
+                </button>
+              </div>
+
+              <h3 style={{ fontSize: 15, margin: "20px 0 8px", color: "var(--text)" }}>Productos en la tienda</h3>
+              {tiendaProductos.length === 0 ? (
+                <p style={{ color: "#999", textAlign: "center" }}>No hay productos todavía.</p>
+              ) : (
+                tiendaProductos.map((prod) => (
+                  <div
+                    key={prod.id}
+                    style={{
+                      background: "#fff", borderRadius: 10, padding: "10px 14px",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.07)", marginBottom: 10,
+                    }}
+                  >
+                    {editingProducto === prod.id ? (
+                      /* ── MODO EDICIÓN ── */
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <input
+                          className="admin-input"
+                          placeholder="Nombre del producto"
+                          value={editProductoData.nombre}
+                          onChange={(e) => setEditProductoData((p) => ({ ...p, nombre: e.target.value }))}
+                        />
+                        <input
+                          className="admin-input"
+                          placeholder="Precio (ej: 2.50)"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={editProductoData.precio}
+                          onChange={(e) => setEditProductoData((p) => ({ ...p, precio: e.target.value }))}
+                        />
+                        {/* Foto */}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          {editProductoFotoUrl && (
+                            <img
+                              src={editProductoFotoUrl} alt="preview"
+                              style={{ width: 54, height: 54, borderRadius: 8, objectFit: "cover" }}
+                              onError={(e) => { e.target.style.display = "none"; }}
+                            />
+                          )}
+                          <button
+                            type="button"
+                            className="btn outline small"
+                            onClick={() => editProductoFileRef.current?.click()}
+                            disabled={editProductoUploadPct !== null}
+                          >🖼️ {editProductoFotoUrl ? "Cambiar foto" : "Añadir foto"}</button>
+                          {editProductoFotoUrl && (
+                            <button
+                              type="button"
+                              className="btn outline small"
+                              style={{ color: "#b91c1c", borderColor: "#b91c1c" }}
+                              onClick={() => { setEditProductoFotoUrl(""); if (editProductoFileRef.current) editProductoFileRef.current.value = ""; }}
+                            >✕ Quitar</button>
+                          )}
+                          {editProductoUploadPct !== null && (
+                            <span style={{ fontSize: 12, color: "#666" }}>Subiendo… {editProductoUploadPct}%</span>
+                          )}
+                        </div>
+                        <input
+                          ref={editProductoFileRef}
+                          type="file" accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={onEditProductoFileChange}
+                        />
+                        <div className="admin-user-actions" style={{ marginTop: 4 }}>
+                          <button
+                            className="btn small"
+                            onClick={() => onSaveEditProducto(prod.id)}
+                            disabled={savingEditProducto || editProductoUploadPct !== null}
+                          >{savingEditProducto ? "..." : "Guardar"}</button>
+                          <button className="btn outline small" onClick={() => setEditingProducto(null)}>✕</button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── MODO NORMAL ── */
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        {prod.fotoUrl ? (
+                          <img
+                            src={prod.fotoUrl} alt={prod.nombre}
+                            style={{ width: 54, height: 54, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+                            onError={(e) => { e.target.style.display = "none"; }}
+                          />
+                        ) : (
+                          <div style={{ width: 54, height: 54, borderRadius: 8, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🛍️</div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{prod.nombre}</div>
+                          <div style={{ color: "#2563eb", fontWeight: 700, fontSize: 13 }}>{formatPrecio(prod.precio)}</div>
+                        </div>
+                        <button className="btn small" onClick={() => onStartEditProducto(prod)}>✏️</button>
+                        <button className="btn danger small" onClick={() => onDeleteProducto(prod.id)}>🗑️</button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ── Pedidos de clientes ── */}
+          {tiendaSubTab === "pedidos" && (
+            <div>
+              {tiendaPedidos.length === 0 ? (
+                <p style={{ color: "#999", textAlign: "center" }}>No hay pedidos todavía.</p>
+              ) : (
+                tiendaPedidos.map((pedido) => (
+                  <div
+                    key={pedido.id}
+                    style={{
+                      background: "#fff", borderRadius: 12, padding: "12px 14px",
+                      boxShadow: "0 1px 5px rgba(0,0,0,0.08)", marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                          {(() => {
+                            const u = users.find((u) => u.id === pedido.userId);
+                            return u ? userName(u) : (pedido.userName || pedido.userEmail || "Desconocido");
+                          })()}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#888" }}>
+                          {pedido.userEmail || ""}</div>
+                        <div style={{ fontSize: 11, color: "#888" }}>
+                          {pedido.createdAt?.toDate
+                            ? pedido.createdAt.toDate().toLocaleString("es-ES")
+                            : "—"}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 12, fontWeight: 700,
+                          color: pedido.estado === "pagado" ? "#059669" : "#d97706",
+                          background: pedido.estado === "pagado" ? "#d1fae5" : "#fef3c7",
+                          borderRadius: 6, padding: "2px 8px", height: "fit-content",
+                        }}
+                      >
+                        {pedido.estado === "pagado" ? "✅ Pagado" : "⏳ Pendiente"}
+                      </span>
+                    </div>
+                    {(pedido.items || []).map((item, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 2 }}>
+                        <span>{item.nombre} × {item.cantidad}</span>
+                        <span>{formatPrecio(item.precio * item.cantidad)}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: "1px solid #f0f4ff", marginTop: 8, paddingTop: 8, display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 14 }}>
+                      <span>Total</span>
+                      <span style={{ color: "#2563eb" }}>{formatPrecio(pedido.total)}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button
+                        className="btn small"
+                        onClick={() => onTogglePedidoEstado(pedido)}
+                      >
+                        {pedido.estado === "pagado" ? "↩️ Marcar pendiente" : "✅ Marcar pagado"}
+                      </button>
+                      <button className="btn danger small" onClick={() => onDeletePedido(pedido.id)}>🗑️</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           )}
         </div>
       )}

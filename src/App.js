@@ -12,6 +12,7 @@ import GestionStock from "./pages/GestionStock";
 import EventosTemporales from "./pages/EventosTemporales";
 import AdminPanel from "./pages/AdminPanel";
 import VotacionCohete from "./pages/VotacionCohete";
+import Tienda from "./pages/Tienda";
 import { useAuth } from "./contexts/AuthContext";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
@@ -114,6 +115,14 @@ export default function App() {
           element={
             <RequireAuth>
               <VotacionCohete />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tienda"
+          element={
+            <RequireAuth>
+              <Tienda />
             </RequireAuth>
           }
         />

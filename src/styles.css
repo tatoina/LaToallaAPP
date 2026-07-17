@@ -1757,19 +1757,18 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
    NAV BOTTOM BUTTONS
    ============================================= */
 .page-bottom-nav {
-  display: flex;
-  gap: 10px;
-  padding: 16px 0 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 14px 0 8px;
   margin-top: 8px;
   align-items: stretch;
 }
 
 .nav-bottom-btn {
-  flex: 1;
-  min-width: 130px;
-  padding: 13px 16px;
+  padding: 11px 8px;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: 1.5px solid rgba(106,143,58,0.3);
@@ -1782,7 +1781,11 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-bottom-btn:hover {
@@ -1799,6 +1802,13 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
   border-color: var(--accent);
   color: white;
   box-shadow: 0 4px 14px rgba(106,143,58,0.25);
+}
+
+.nav-bottom-btn.menus {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: white;
+  box-shadow: 0 4px 14px rgba(124,58,237,0.25);
 }
 
 /* =============================================
@@ -1887,6 +1897,17 @@ details[open] .ev2-past-summary::before { content: "▼ "; }
 
 .dash-secondary-btn--cohete:hover {
   background: rgba(99,68,175,0.08);
+}
+
+/* Botón tienda en dashboard */
+.dash-secondary-btn--tienda {
+  border-color: rgba(37,99,235,0.3);
+  background: linear-gradient(135deg, #fff, rgba(37,99,235,0.05));
+  color: #1e40af;
+}
+
+.dash-secondary-btn--tienda:hover {
+  background: rgba(37,99,235,0.08);
 }
 
 /* =============================================

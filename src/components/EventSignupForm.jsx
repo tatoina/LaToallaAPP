@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
@@ -116,6 +117,84 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
   const [saving, setSaving] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const popupTimerRef = useRef(null);
+
+  // --- Menús ---
+  const [showMenus, setShowMenus] = useState(false);
+  const [menus, setMenus] = useState([]);
+  const [menuForm, setMenuForm] = useState({ dia: "Lunes", cocinero: "", plato: "" });
+  const [savingMenu, setSavingMenu] = useState(false);
+  const [menuError, setMenuError] = useState("");
+  const [editingMenuId, setEditingMenuId] = useState(null);
+  const [editMenuForm, setEditMenuForm] = useState({ dia: "Lunes", cocinero: "", plato: "" });
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "fiestas_menus"),
+      where("eventType", "==", eventType)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const ORDEN = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => ORDEN.indexOf(a.dia) - ORDEN.indexOf(b.dia));
+      setMenus(docs);
+    });
+    return () => unsub();
+  }, [eventType]);
+
+  // Pre-rellenar cocinero cuando se abre el modal
+  useEffect(() => {
+    if (showMenus && user) {
+      const nombre = user.displayName || user.email?.split("@")[0] || "";
+      setMenuForm((f) => ({ ...f, cocinero: f.cocinero || nombre }));
+    }
+  }, [showMenus, user]);
+
+  async function handleAddMenu(e) {
+    e.preventDefault();
+    setMenuError("");
+    if (!menuForm.plato.trim()) { setMenuError("Escribe qué se come."); return; }
+    if (!menuForm.cocinero.trim()) { setMenuError("Escribe quién cocina."); return; }
+    setSavingMenu(true);
+    try {
+      await addDoc(collection(db, "fiestas_menus"), {
+        dia: menuForm.dia,
+        cocinero: menuForm.cocinero.trim(),
+        plato: menuForm.plato.trim(),
+        eventType,
+        uid: user?.uid || null,
+        email: user?.email || null,
+        createdAt: serverTimestamp(),
+      });
+      setMenuForm((f) => ({ ...f, plato: "" }));
+    } catch (err) {
+      console.error(err);
+      setMenuError("No se pudo guardar. Inténtalo de nuevo.");
+    } finally {
+      setSavingMenu(false);
+    }
+  }
+
+  async function handleDeleteMenu(menuId) {
+    try {
+      await deleteDoc(doc(db, "fiestas_menus", menuId));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleSaveMenuEdit(menuId) {
+    if (!editMenuForm.plato.trim() || !editMenuForm.cocinero.trim()) return;
+    try {
+      await updateDoc(doc(db, "fiestas_menus", menuId), {
+        dia: editMenuForm.dia,
+        cocinero: editMenuForm.cocinero.trim(),
+        plato: editMenuForm.plato.trim(),
+      });
+      setEditingMenuId(null);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -419,7 +498,7 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
             </>
           )}
 
-          <div style={{ display: "flex", gap: 16, marginTop: 8, alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 8, alignItems: "center", justifyContent: "center" }}>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="checkbox" checked={almuerzo} onChange={(e) => setAlmuerzo(e.target.checked)} />
               Almuerzo
@@ -439,14 +518,14 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 24, marginTop: 12, justifyContent: "center", alignItems: "center" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 24px", marginTop: 12, justifyContent: "center", alignItems: "center" }}>
             <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 15 }}>
               Adultos
               <input
                 type="number" min="0" value={adults} required
                 inputMode="numeric" pattern="[0-9]*"
                 onChange={(e) => setAdults(e.target.value)}
-                style={{ width: 72, textAlign: "center", padding: "10px 8px", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 22, fontWeight: 700 }}
+                style={{ width: "clamp(56px, 18vw, 72px)", textAlign: "center", padding: "10px 8px", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 22, fontWeight: 700, boxSizing: "border-box" }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 15 }}>
@@ -455,7 +534,7 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
                 type="number" min="0" value={children}
                 inputMode="numeric" pattern="[0-9]*"
                 onChange={(e) => setChildren(e.target.value)}
-                style={{ width: 72, textAlign: "center", padding: "10px 8px", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 22, fontWeight: 700 }}
+                style={{ width: "clamp(56px, 18vw, 72px)", textAlign: "center", padding: "10px 8px", border: "1.5px solid #ddd", borderRadius: 10, fontSize: 22, fontWeight: 700, boxSizing: "border-box" }}
               />
             </label>
           </div>
@@ -474,7 +553,8 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
 
           <div className="page-bottom-nav" style={{ marginTop: 12 }}>
             <button className="nav-bottom-btn" onClick={() => navigate("/")}>← Inicio</button>
-            <button className="nav-bottom-btn accent" onClick={() => navigate(`/fiestas/list/${eventType}`)}>📋 Ver listado</button>
+            <button className="nav-bottom-btn menus" onClick={() => setShowMenus(true)}>🍽️ Menús</button>
+            <button className="nav-bottom-btn accent" onClick={() => navigate(`/fiestas/list/${eventType}`)}>📋 Listado</button>
           </div>
         </form>
       </div>
@@ -507,6 +587,157 @@ export default function EventSignupForm({ eventType, title, defaultMonth, single
             <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
               <button className="btn small" onClick={() => { setShowPopup(false); resetForm(); }}>Cerrar</button>
               <button className="btn outline small" onClick={() => { setShowPopup(false); navigate(`/fiestas/list/${eventType}`); }}>Ir al listado</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMenus && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menús"
+          style={{
+            position: "fixed", inset: 0, display: "flex", alignItems: "flex-start",
+            justifyContent: "center", zIndex: 99999, background: "rgba(0,0,0,0.45)",
+            padding: "20px 12px", overflowY: "auto",
+          }}
+          onClick={() => setShowMenus(false)}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: 16, padding: "22px 18px",
+              width: "100%", maxWidth: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#7c3aed" }}>🍽️ Menús</div>
+              <button
+                onClick={() => setShowMenus(false)}
+                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}
+              >✕</button>
+            </div>
+
+            {/* Lista de menús existentes */}
+            {menus.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#aaa", fontSize: 14, marginBottom: 16 }}>Aún no hay menús registrados</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {menus.map((m) => (
+                  <div key={m.id} style={{
+                    background: "#f5f3ff", border: "1.5px solid #e9d5ff",
+                    borderRadius: 10, padding: "10px 12px",
+                  }}>
+                    {editingMenuId === m.id ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <select
+                          value={editMenuForm.dia}
+                          onChange={(e) => setEditMenuForm((f) => ({ ...f, dia: e.target.value }))}
+                          style={{ padding: "6px 8px", borderRadius: 7, border: "1.5px solid #c4b5fd", fontSize: 13, background: "#fff" }}
+                        >
+                          {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map((d) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text" value={editMenuForm.cocinero} maxLength={60}
+                          onChange={(e) => setEditMenuForm((f) => ({ ...f, cocinero: e.target.value }))}
+                          placeholder="Quién cocina"
+                          style={{ padding: "6px 8px", borderRadius: 7, border: "1.5px solid #c4b5fd", fontSize: 13 }}
+                        />
+                        <input
+                          type="text" value={editMenuForm.plato} maxLength={120}
+                          onChange={(e) => setEditMenuForm((f) => ({ ...f, plato: e.target.value }))}
+                          placeholder="Qué se come"
+                          style={{ padding: "6px 8px", borderRadius: 7, border: "1.5px solid #c4b5fd", fontSize: 13 }}
+                        />
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => handleSaveMenuEdit(m.id)}
+                            style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "none", background: "#7c3aed", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                          >Guardar</button>
+                          <button
+                            onClick={() => setEditingMenuId(null)}
+                            style={{ padding: "7px 12px", borderRadius: 8, border: "1.5px solid #ddd", background: "#fff", fontSize: 13, cursor: "pointer" }}
+                          >Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#7c3aed" }}>{m.dia}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#222", marginTop: 2 }}><span style={{ color: "#888", fontWeight: 500 }}>Menú: </span>{m.plato}</div>
+                          <div style={{ fontSize: 12, color: "#666", marginTop: 1 }}><span style={{ color: "#888" }}>Cocina: </span>{m.cocinero}</div>
+                        </div>
+                        <button
+                          onClick={() => { setEditingMenuId(m.id); setEditMenuForm({ dia: m.dia, cocinero: m.cocinero, plato: m.plato }); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: 4, flexShrink: 0 }}
+                          title="Editar"
+                        >✏️</button>
+                        <button
+                          onClick={() => handleDeleteMenu(m.id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#b42318", padding: 4, flexShrink: 0 }}
+                          title="Eliminar"
+                        >🗑️</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulario añadir menú */}
+            <div style={{ borderTop: "1.5px solid #e9d5ff", paddingTop: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#555", marginBottom: 10 }}>➕ Añadir menú</div>
+              <form onSubmit={handleAddMenu} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#444" }}>
+                  Día
+                  <select
+                    value={menuForm.dia}
+                    onChange={(e) => setMenuForm((f) => ({ ...f, dia: e.target.value }))}
+                    style={{ padding: "8px 10px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14, background: "#fff" }}
+                  >
+                    {["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#444" }}>
+                  Quién cocina
+                  <input
+                    type="text"
+                    value={menuForm.cocinero}
+                    onChange={(e) => setMenuForm((f) => ({ ...f, cocinero: e.target.value }))}
+                    placeholder="Tu nombre"
+                    maxLength={60}
+                    style={{ padding: "8px 10px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14 }}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#444" }}>
+                  Qué se come
+                  <input
+                    type="text"
+                    value={menuForm.plato}
+                    onChange={(e) => setMenuForm((f) => ({ ...f, plato: e.target.value }))}
+                    placeholder="Ej: Paella con marisco"
+                    maxLength={120}
+                    style={{ padding: "8px 10px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14 }}
+                  />
+                </label>
+                {menuError && <p style={{ color: "#b42318", fontSize: 13, margin: 0 }}>{menuError}</p>}
+                <button
+                  type="submit"
+                  disabled={savingMenu}
+                  style={{
+                    padding: "11px 0", borderRadius: 10, border: "none",
+                    background: "#7c3aed", color: "#fff", fontWeight: 700, fontSize: 15,
+                    cursor: savingMenu ? "not-allowed" : "pointer", opacity: savingMenu ? 0.7 : 1,
+                  }}
+                >
+                  {savingMenu ? "Guardando..." : "Guardar menú"}
+                </button>
+              </form>
             </div>
           </div>
         </div>
