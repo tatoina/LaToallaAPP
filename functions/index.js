@@ -212,8 +212,22 @@ exports.onNewNoticia = firestoreFn
       </div>
     `;
 
+    // Mapeo de categoría de noticia → clave de preferencia
+    const categoryPrefKey = {
+      "Fiestas Juventud": "fiestasJuventud",
+      "Fiestas Santiago": "fiestasSantiago",
+      "Ferias":           "ferias",
+      "Eventos":          "eventosTemporales",
+    }[noticia.category] || null; // "General" u otras → null (enviar a todos)
+
     const usersSnap = await admin.firestore().collection("users").get();
-    const emails = usersSnap.docs.map((d) => d.data().email).filter(Boolean);
+    const emails = [];
+    for (const userDoc of usersSnap.docs) {
+      const email = userDoc.data().email;
+      if (!email) continue;
+      if (categoryPrefKey && !(await userWantsEmail(userDoc.id, categoryPrefKey))) continue;
+      emails.push(email);
+    }
 
     if (emails.length === 0) {
       console.log("No hay usuarios con email para notificar.");

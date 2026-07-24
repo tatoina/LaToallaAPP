@@ -66,7 +66,8 @@ export default function FiestasList() {
   const [editData,   setEditData]   = useState({ adults: 1, children: 0, almuerzo: false, comida: false, cena: false });
   const [savingEdit, setSavingEdit] = useState(false);
   const [showSettlement, setShowSettlement] = useState(false);
-  const [cuentaData, setCuentaData] = useState({ childPrice: "", tickets: [] });
+  const [showCuentasHelp, setShowCuentasHelp] = useState(false);
+  const [cuentaData, setCuentaData] = useState({ childPrice: "", comensalAdulto: "", comensalNino: "", tickets: [] });
   const [ticketForm, setTicketForm] = useState({ paidById: "", amount: "" });
   const [savingCuenta, setSavingCuenta] = useState(false);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
@@ -79,6 +80,7 @@ export default function FiestasList() {
   const [menuError, setMenuError] = useState("");
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [editMenuForm, setEditMenuForm] = useState({ dia: "Lunes", cocinero: "", plato: "" });
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     if (!urlKey) return;
@@ -263,6 +265,8 @@ export default function FiestasList() {
       const tickets = Array.isArray(data.tickets) ? data.tickets : [];
       setCuentaData({
         childPrice: data.childPrice ?? "",
+        comensalAdulto: data.comensalAdulto ?? "",
+        comensalNino: data.comensalNino ?? "",
         tickets,
       });
       setTicketForm({ paidById: "", amount: "" });
@@ -290,6 +294,11 @@ export default function FiestasList() {
   const remainingTotal = Math.max(0, ticketTotal - childTotal);
   const effectivePeople = totAdults + (childPriceSet ? 0 : totChildren);
   const adultShare = effectivePeople > 0 ? remainingTotal / effectivePeople : 0;
+  const comensalA = Number(cuentaData.comensalAdulto || 0);
+  const comensalN = Number(cuentaData.comensalNino || 0);
+  const comensalTotalAdults = comensalA * totAdults;
+  const comensalTotalChildren = comensalN * totChildren;
+  const comensalGrandTotal = comensalTotalAdults + comensalTotalChildren;
 
   const payerSummary = useMemo(() => {
     const map = new Map();
@@ -319,25 +328,30 @@ export default function FiestasList() {
 
     return Array.from(map.values())
       .map((item) => {
-        const owes = item.adults * adultShare + (childPriceSet ? item.children * childPrice : item.children * adultShare);
+        const ticketOwes = item.adults * adultShare + (childPriceSet ? item.children * childPrice : item.children * adultShare);
+        const comensalPersonal = item.adults * comensalA + item.children * comensalN;
+        const owes = ticketOwes + comensalPersonal;
         return {
           ...item,
           owes,
+          ticketOwes,
+          comensalPersonal,
           balance: item.paid - owes,
+          ticketBalance: item.paid - ticketOwes,
         };
       })
-      .sort((a, b) => b.balance - a.balance);
-  }, [mealRows, cuentaData, childPrice, childPriceSet, adultShare]);
+      .sort((a, b) => b.ticketBalance - a.ticketBalance);
+  }, [mealRows, cuentaData, childPrice, childPriceSet, adultShare, comensalA, comensalN]);
 
-  // Lista mínima de transferencias para saldar deudas
+  // Lista mínima de transferencias para saldar deudas (solo tickets, los comensales se pagan en mano)
   const transferList = useMemo(() => {
     if (!adultShare && !childPrice) return [];
     const creditors = payerSummary
-      .filter((p) => p.balance > 0.005)
-      .map((p) => ({ ...p, rem: p.balance }));
+      .filter((p) => p.ticketBalance > 0.005)
+      .map((p) => ({ ...p, rem: p.ticketBalance }));
     const debtors = payerSummary
-      .filter((p) => p.balance < -0.005)
-      .map((p) => ({ ...p, rem: Math.abs(p.balance) }));
+      .filter((p) => p.ticketBalance < -0.005)
+      .map((p) => ({ ...p, rem: Math.abs(p.ticketBalance) }));
     const transfers = [];
     let ci = 0; let di = 0;
     while (ci < creditors.length && di < debtors.length) {
@@ -403,6 +417,8 @@ export default function FiestasList() {
         eventKey: selEvent,
         mealKey: selMeal,
         childPrice: Number(nextData.childPrice || 0),
+        comensalAdulto: Number(nextData.comensalAdulto || 0),
+        comensalNino: Number(nextData.comensalNino || 0),
         tickets: nextData.tickets,
       }, { merge: true });
     } catch (err) {
@@ -416,6 +432,20 @@ export default function FiestasList() {
   const onChildPriceChange = async (value) => {
     const normalized = value.replace(",", ".");
     const nextData = { ...cuentaData, childPrice: normalized };
+    setCuentaData(nextData);
+    await saveCuenta(nextData);
+  };
+
+  const onComensalAdultoChange = async (value) => {
+    const normalized = value.replace(",", ".");
+    const nextData = { ...cuentaData, comensalAdulto: normalized };
+    setCuentaData(nextData);
+    await saveCuenta(nextData);
+  };
+
+  const onComensalNinoChange = async (value) => {
+    const normalized = value.replace(",", ".");
+    const nextData = { ...cuentaData, comensalNino: normalized };
     setCuentaData(nextData);
     await saveCuenta(nextData);
   };
@@ -474,10 +504,10 @@ export default function FiestasList() {
   };
 
   const onResetCuentas = async () => {
-    if (!window.confirm("¿Borrar todos los tickets y el precio por niño? Esta acción no se puede deshacer.")) return;
-    const nextData = { childPrice: "", tickets: [] };
+    if (!window.confirm("¿Borrar todos los tickets, precios y comensales? Esta acción no se puede deshacer.")) return;
+    const nextData = { childPrice: "", comensalAdulto: "", comensalNino: "", tickets: [] };
     setCuentaData(nextData);
-    await saveCuenta({ childPrice: 0, tickets: [] });
+    await saveCuenta({ childPrice: 0, comensalAdulto: 0, comensalNino: 0, tickets: [] });
   };
 
   const stepLabel = (n, text) => (
@@ -760,7 +790,7 @@ export default function FiestasList() {
           onClick={() => setShowSettlement(false)}
         >
           <div
-            style={{ background: "white", borderRadius: "18px 18px 0 0", width: "100%", maxWidth: 520, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 -4px 32px rgba(0,0,0,0.15)" }}
+            style={{ background: "white", borderRadius: "18px 18px 0 0", width: "100%", maxWidth: 520, maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 -4px 32px rgba(0,0,0,0.15)", position: "relative" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Cabecera fija */}
@@ -769,6 +799,11 @@ export default function FiestasList() {
                 🧾 Ajuste para {mealInfo?.label?.toLowerCase() || "la comida"}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  onClick={() => setShowCuentasHelp(true)}
+                  style={{ width: 26, height: 26, borderRadius: "50%", border: "1.5px solid #b0c890", background: "#f4f9eb", color: "#4a7c2f", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  title="Cómo funciona el ajuste de cuentas"
+                >?</button>
                 {((cuentaData.tickets || []).length > 0 || cuentaData.childPrice) && (
                   <button
                     onClick={onResetCuentas}
@@ -778,6 +813,48 @@ export default function FiestasList() {
                 <button onClick={() => setShowSettlement(false)} style={{ border: "none", background: "none", fontSize: 22, cursor: "pointer", color: "#888", lineHeight: 1, padding: 0 }}>✕</button>
               </div>
             </div>
+
+            {/* Panel ayuda */}
+            {showCuentasHelp && (
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 10, display: "flex", alignItems: "flex-end", justifyContent: "center", borderRadius: "18px 18px 0 0" }}
+                onClick={() => setShowCuentasHelp(false)}
+              >
+                <div style={{ background: "white", borderRadius: "18px 18px 0 0", width: "100%", maxHeight: "80vh", overflowY: "auto", padding: "20px 18px 32px", boxSizing: "border-box" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <span style={{ fontWeight: 800, fontSize: 16 }}>ℹ️ Cómo funciona el ajuste</span>
+                    <button onClick={() => setShowCuentasHelp(false)} style={{ border: "none", background: "none", fontSize: 22, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+                  </div>
+                  <div style={{ display: "grid", gap: 14, fontSize: 13, color: "#333" }}>
+                    <div style={{ background: "#f4f9eb", borderRadius: 10, padding: "12px 14px", borderLeft: "4px solid #78b041" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>🧾 1. Añade los tickets</div>
+                      <div style={{ color: "#555" }}>Cada vez que alguien paga algo (supermercado, bar, etc.) añade un ticket indicando quién pagó y el importe. Pueden añadirse varios tickets.</div>
+                    </div>
+                    <div style={{ background: "#f4f9eb", borderRadius: 10, padding: "12px 14px", borderLeft: "4px solid #78b041" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>👧 2. Precio por niño (opcional)</div>
+                      <div style={{ color: "#555" }}>Si los niños pagan menos, pon aquí su precio fijo. El resto del total se reparte solo entre los adultos. Si lo dejas en blanco, los niños cuentan igual que un adulto.</div>
+                    </div>
+                    <div style={{ background: "#f4f9eb", borderRadius: 10, padding: "12px 14px", borderLeft: "4px solid #78b041" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>🍽️ 3. Comensal por adulto / niño</div>
+                      <div style={{ color: "#555" }}>Gasto diario fijo por persona para recuperar la compra inicial (vajilla, servilletas, condimentos…). Se suma a lo que ya debe cada persona por los tickets. Por ejemplo, si el comensal adulto son 2€, cada adulto pagará 2€ más aparte de su parte de los tickets.</div>
+                    </div>
+                    <div style={{ background: "#fff8e8", borderRadius: 10, padding: "12px 14px", borderLeft: "4px solid #f59e0b" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚖️ Cómo se calcula el balance</div>
+                      <div style={{ color: "#555" }}>Para cada persona:<br/><br/>
+                        <strong>Lo que debe</strong> = su parte de tickets + comensal adulto × adultos + comensal niño × niños<br/><br/>
+                        <strong>Balance</strong> = lo que pagó − lo que debe<br/><br/>
+                        Si el balance es positivo → le deben dinero. Si es negativo → debe pagar.
+                      </div>
+                    </div>
+                    <div style={{ background: "#f4f9eb", borderRadius: 10, padding: "12px 14px", borderLeft: "4px solid #78b041" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>💸 Quién paga a quién</div>
+                      <div style={{ color: "#555" }}>Al final se muestra la lista mínima de transferencias necesarias para que todo el mundo quede en paz.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Contenido scrollable */}
             <div style={{ overflowY: "auto", flex: 1, padding: "12px 14px 32px", WebkitOverflowScrolling: "touch" }}>
               <div style={{ display: "grid", gap: 10 }}>
@@ -842,10 +919,46 @@ export default function FiestasList() {
                   </div>
                 </div>
 
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 4 }}>COMENSAL ADULTO</div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cuentaData.comensalAdulto}
+                      onChange={(e) => onComensalAdultoChange(e.target.value)}
+                      placeholder="€"
+                      style={{ width: 56, padding: "6px 8px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13, textAlign: "center" }}
+                    />
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                      <span>{totAdults} adultos</span>
+                      {comensalA > 0 && <span style={{ fontWeight: 700, color: "#2f5a1e", marginLeft: 6 }}>{money(comensalTotalAdults)}</span>}
+                    </div>
+                  </div>
+
+                  <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#fcfef9" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 4 }}>COMENSAL NIÑO</div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cuentaData.comensalNino}
+                      onChange={(e) => onComensalNinoChange(e.target.value)}
+                      placeholder="€"
+                      style={{ width: 56, padding: "6px 8px", borderRadius: 8, border: "1px solid #d6dfc6", fontSize: 13, textAlign: "center" }}
+                    />
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                      <span>{totChildren} niños</span>
+                      {comensalN > 0 && <span style={{ fontWeight: 700, color: "#2f5a1e", marginLeft: 6 }}>{money(comensalTotalChildren)}</span>}
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ border: "1px solid #edf2e4", borderRadius: 10, padding: 10, background: "#f7fbf0" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8 }}>RESUMEN</div>
                   <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Total evento</span><strong>{money(ticketTotal)}</strong></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Total tickets</span><strong>{money(ticketTotal)}</strong></div>
                     {childPriceSet ? (
                       <>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>Precio por niño</span><strong>{money(childPrice)}</strong></div>
@@ -858,7 +971,16 @@ export default function FiestasList() {
                         <strong>{totAdults}A + {totChildren}N = {effectivePeople} personas</strong>
                       </div>
                     )}
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", paddingTop: 6, borderTop: "1px dashed #d6dfc6" }}><span>Sale por {childPriceSet ? "adulto" : "persona"}</span><strong>{money(adultShare)}</strong></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", paddingTop: 6, borderTop: "1px dashed #d6dfc6" }}><span>Sale por {childPriceSet ? "adulto" : "persona"} (tickets)</span><strong>{money(adultShare)}</strong></div>
+                    {comensalA > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>🍽️ Comensal adulto × {totAdults}</span><strong>{money(comensalTotalAdults)}</strong></div>
+                    )}
+                    {comensalN > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span>🍽️ Comensal niño × {totChildren}</span><strong>{money(comensalTotalChildren)}</strong></div>
+                    )}
+                    {(comensalA > 0 || comensalN > 0) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", paddingTop: 6, borderTop: "1px dashed #d6dfc6", fontWeight: 700 }}><span>Total a recaudar</span><strong>{money(ticketTotal + comensalGrandTotal)}</strong></div>
+                    )}
                   </div>
                 </div>
 
@@ -870,19 +992,17 @@ export default function FiestasList() {
                     <div style={{ display: "grid", gap: 6 }}>
                       {payerSummary.map((payer) => {
                         const isPayer = payer.paid > 0;
-                        const isZero = Math.abs(payer.balance) < 0.005;
-                        const isPos = payer.balance > 0.005;
+                        const isZero = Math.abs(payer.ticketBalance) < 0.005;
+                        const isPos = payer.ticketBalance > 0.005;
                         const bg = isZero ? "#f5f5f5" : isPos ? "#eef8e8" : "#fff2f2";
                         const border = isZero ? "#ddd" : isPos ? "#cfe4be" : "#f0cccc";
-                        const adultCost = payer.adults * adultShare;
-                        const childCost = payer.children * childPrice;
                         return (
                           <div key={payer.id} style={{ borderRadius: 8, padding: "8px 10px", background: bg, border: `1px solid ${border}` }}>
-                            {/* Nombre + balance */}
+                            {/* Nombre + balance tickets */}
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, fontWeight: 700, flexWrap: "wrap" }}>
                               <span>{payer.name} {isPayer ? "🧾" : ""}</span>
                               <span style={{ color: isZero ? "#888" : isPos ? "#2f6b1b" : "#b42318" }}>
-                                {isZero ? "En paz ✓" : isPos ? `↑ recibe ${money(payer.balance)}` : `↓ debe ${money(Math.abs(payer.balance))}`}
+                                {isZero ? "En paz ✓" : isPos ? `↑ recibe ${money(payer.ticketBalance)}` : `↓ debe ${money(Math.abs(payer.ticketBalance))}`}
                               </span>
                             </div>
                             {/* Desglose adultos / niños */}
@@ -899,10 +1019,28 @@ export default function FiestasList() {
                                   <strong>{money(payer.children * (childPriceSet ? childPrice : adultShare))}</strong>
                                 </div>
                               )}
+                              {comensalA > 0 && payer.adults > 0 && (
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span>🍽️ Comensal adulto: {payer.adults} × {money(comensalA)}</span>
+                                  <strong>{money(payer.adults * comensalA)}</strong>
+                                </div>
+                              )}
+                              {comensalN > 0 && payer.children > 0 && (
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span>🍽️ Comensal niño: {payer.children} × {money(comensalN)}</span>
+                                  <strong>{money(payer.children * comensalN)}</strong>
+                                </div>
+                              )}
                               <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #ccc", marginTop: 3, paddingTop: 3, fontWeight: 700, color: "#333" }}>
-                                <span>Total a pagar</span>
-                                <span>{money(payer.owes)}</span>
+                                <span>Total tickets</span>
+                                <span>{money(payer.ticketOwes)}</span>
                               </div>
+                              {payer.comensalPersonal > 0.005 && (
+                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2, fontWeight: 700, color: "#92400e", background: "#fffbeb", borderRadius: 5, padding: "2px 4px" }}>
+                                  <span>🍽️ Comensal (pagar en mano)</span>
+                                  <span>{money(payer.comensalPersonal)}</span>
+                                </div>
+                              )}
                               {isPayer && (
                                 <div style={{ display: "flex", justifyContent: "space-between", color: "#2f6b1b", fontWeight: 700 }}>
                                   <span>Pagó</span>
